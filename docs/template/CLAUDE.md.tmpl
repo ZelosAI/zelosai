@@ -1,0 +1,73 @@
+# CLAUDE.md
+
+> **Note for Claude sessions:** this file follows the Zelos suite-wide template.
+> See [zelosai/docs/architecture/05-gitflow.md](https://github.com/ZelosAI/zelosai/blob/main/docs/architecture/05-gitflow.md)
+> for the canonical gitflow and
+> [zelosai/docs/template/CLAUDE.md.tmpl](https://github.com/ZelosAI/zelosai/blob/main/docs/template/CLAUDE.md.tmpl)
+> for the template this file derives from.
+
+## Repository
+
+- **Repo:** `ZelosAI/<REPO-NAME>`
+- **Image:** `ghcr.io/zelosai/<REPO-NAME>` (if applicable)
+- **Purpose:** <one-paragraph what-and-why; link to architecture in zelosai>
+- **State:** <vX.Y.Z scaffold / alpha / production; "Not yet validated …" if relevant>
+
+## Active Branch
+
+- Work on: `claude/<session-slug>`
+
+## Layout
+
+```
+<tree of the repo (depth ~3) with one-line annotations>
+```
+
+## How to run it / How to build it
+
+```bash
+# for containers
+make build      # build the image
+make run        # run locally
+make test       # run tests
+make lint       # static checks
+
+# for libraries
+pip install -e ".[dev]"
+pytest -q
+```
+
+## What has been verified / What has NOT been verified
+
+- **Verified:** <honest list of what has actually been run and observed working>
+- **Not verified:** <equally honest list of what hasn't — don't claim coverage you don't have>
+
+## Configuration surface
+
+<env vars, config files, secrets needed at runtime — link to `.env.example`>
+
+## Git / Workflow
+
+- **Branching policy:** `main` is the protected release line. Feature branches
+  (the `claude/*` session branches and any other topic branches) MUST be PR'd
+  into `develop` first. Promotion from `develop` to `main` is a separate PR
+  cut from `develop` once a set of features has been integrated and validated.
+  Never open a PR from a feature branch directly against `main`. If `develop`
+  does not yet exist on the remote, create it from `main` before opening the
+  first feature PR.
+- **Commits:** clear, descriptive messages. Co-author with Claude where applicable.
+- **Tagging:** semver — `v0.1.0`, `v0.2.0`, … Tag from `main` only.
+- **Container builds:** triggered by tag push (`v*`) via `.github/workflows/release.yml`;
+  images publish to `ghcr.io/zelosai/<REPO-NAME>:<tag>` plus `:latest` on `main`
+  pushes and `:sha-<short>` on every build.
+- **PRs:** do not create unless explicitly asked.
+
+## Relation to the Zelos suite
+
+<2–3 sentences: what this component does for the suite; pointers to
+[zelosai/docs/architecture](https://github.com/ZelosAI/zelosai/tree/main/docs/architecture)
+for the high-level architecture>
+
+## Notes / Blockers
+
+<anything a future session should know but can't infer from the code>
