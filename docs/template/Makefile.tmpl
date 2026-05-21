@@ -1,0 +1,39 @@
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
+
+# Standard variables (override on command line):  make TAG=v0.1.0 image
+IMAGE ?= ghcr.io/zelosai/<REPO-NAME>
+TAG   ?= dev
+PORT  ?= 8000
+
+.PHONY: help build run test lint fmt image push clean
+
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+build: ## Install in editable mode (with dev extras if defined)
+	pip install -e ".[dev]" 2>/dev/null || pip install -e .
+
+run: ## Run the service locally
+	python -m <PACKAGE_NAME>
+
+test: ## Run pytest
+	pytest -q
+
+lint: ## ruff check + format check
+	ruff check .
+	ruff format --check .
+
+fmt: ## ruff format + auto-fix
+	ruff format .
+	ruff check --fix .
+
+image: ## Build the container image
+	docker build -t $(IMAGE):$(TAG) .
+
+push: image ## Build + push the container image
+	docker push $(IMAGE):$(TAG)
+
+clean: ## Remove caches and build artifacts
+	rm -rf .pytest_cache .ruff_cache .mypy_cache build dist *.egg-info
+	find . -type d -name __pycache__ -exec rm -rf {} +

@@ -1,0 +1,54 @@
+# <repo-name>
+
+> One-paragraph description of what this component does.
+
+Part of the [Zelos suite](https://github.com/ZelosAI/zelosai) — a set of components that sit
+between developer IDEs (Cursor / VSCode + subscription LLMs) and a fleet of local +
+datacenter-hosted models to reduce subscription token spend and offload work to cheaper compute.
+See [zelosai/docs/architecture](https://github.com/ZelosAI/zelosai/tree/main/docs/architecture)
+for the suite-wide picture, and
+[zelosai/docs/architecture/04-components/<repo-name>.md](https://github.com/ZelosAI/zelosai/blob/main/docs/architecture/04-components/<repo-name>.md)
+for this component's specific role.
+
+## Status
+
+**v0.1.0 scaffold.** Not yet validated end-to-end. See [CLAUDE.md](./CLAUDE.md) for verification state.
+
+## Quickstart
+
+```bash
+make build     # install / build
+make run       # run locally
+make test      # tests
+make lint      # static checks
+make image     # build container
+```
+
+## Layout
+
+```
+src/<package>/        # source
+tests/                # tests
+docs/README.md        # links to architecture docs in zelosai
+Dockerfile            # container build
+Makefile              # standard targets
+.github/workflows/    # lint + release CI
+```
+
+## Container
+
+Published as [`ghcr.io/zelosai/<repo-name>`](https://github.com/orgs/ZelosAI/packages?repo_name=<repo-name>).
+Tags: `:vX.Y.Z` (releases), `:latest` (main), `:main`, `:sha-<short>`.
+
+## Configuration
+
+See `.env.example` for the full configuration surface.
+
+## Contributing
+
+See [zelosai/docs/architecture/05-gitflow.md](https://github.com/ZelosAI/zelosai/blob/main/docs/architecture/05-gitflow.md)
+for the suite-wide gitflow. Short version: PRs target `develop`, not `main`; tags are cut from `main` only.
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
