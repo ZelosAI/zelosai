@@ -89,13 +89,55 @@ release tags follow the repo as a whole.
 
 Every component repo that ships a container has `.github/workflows/release.yml`
 (from [`zelosai/docs/template/release.yml.tmpl`](../template/release.yml.tmpl)).
-The workflow triggers on:
+It builds **multi-arch images** (`linux/amd64` + `linux/arm64`) to
+`ghcr.io/zelosai/<repo>` so Apple Silicon Macs and ARM servers can pull the
+same tags without translation.
 
-- Push to `main` → publishes `ghcr.io/zelosai/<repo>:main` and `:sha-<short>`.
-- Tag push `v*` → publishes `ghcr.io/zelosai/<repo>:vX.Y.Z` and `:latest`, plus `:sha-<short>`.
+### Triggers and tags
 
-Image references in the suite (e.g. inside Helm values) should pin to a tag
-(`:vX.Y.Z`) or a digest, **not** to `:latest`.
+The workflow runs on three events. Tags applied per event:
+
+| Trigger | Tags applied |
+|---|---|
+| Push to **`develop`** (PR merged into integration) | `:v<X.Y.Z>-dev` · `:latest` · `:sha-<short>` |
+| Push to **`main`** (develop → main promotion PR merged) | `:v<X.Y.Z>` · `:latest` · `:stable` · `:sha-<short>` |
+| Push of **`v<X.Y.Z>`** git tag (cut from `main`) | `:v<X.Y.Z>` · `:latest` · `:stable` · `:sha-<short>` |
+
+Pointer semantics:
+
+- **`:latest`** — most recent build of any kind. Bumped on every push
+  (develop, main, tag). Useful for "give me the bleeding edge regardless of
+  branch".
+- **`:stable`** — head of `main`. Only `main` push and `v*` tag bump it.
+  Useful for "give me the most recent release-quality build".
+- **`:v<X.Y.Z>`** — immutable-ish; overwritten only if `main` is rebuilt
+  at the same version.
+- **`:v<X.Y.Z>-dev`** — overwritten on every develop merge that doesn't bump
+  the version.
+- **`:sha-<short>`** — always present for traceability.
+
+### Version source
+
+The workflow reads the version from one of two places (in this order):
+
+1. `galaxy.yml` → `version:` (Ansible collections — currently only `zelos.dgx`).
+2. `pyproject.toml` → `[project] version = "X.Y.Z"` (every other repo).
+
+On `v<X.Y.Z>` tag push, the workflow **validates that the tag matches the
+in-repo version** and fails the build if they diverge. Bump
+`pyproject.toml`/`galaxy.yml` *before* tagging.
+
+### Image-reference policy
+
+Image references in the suite (e.g. inside Helm values, deployment manifests,
+or other components' configs) should pin to:
+
+- A semver tag like `:v0.3.1` (for releases on `main`), **or**
+- A digest like `@sha256:...` (for immutable pinning), **or**
+- `:stable` if you specifically want "latest release on main, rolling".
+
+**Do not pin to `:latest` outside of dev environments** — it bumps on every
+develop merge.
 
 ## PRs
 
