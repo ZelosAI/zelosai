@@ -1,0 +1,19 @@
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosMCP
+metadata:
+  name: default
+  namespace: zelos
+spec:
+  replicas: 1
+  image:
+    repository: ghcr.io/zelosai/zelosmcp
+    tag: develop
+  imagePullSecrets:
+    - name: ghcr-pull-secret
+  persistence:
+    enabled: true
+    size: 1Gi
+  authProviderSecretRef: zelos-mcp-auth
+  mcpServersConfigMapRef: zelos-mcp-servers
+  config:
+    ZELOSMCP_LOG_FORMAT: "json"

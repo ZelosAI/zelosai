@@ -1,0 +1,71 @@
+domain: zelosai.io
+layout:
+- go.kubebuilder.io/v4
+projectName: zelosai
+repo: github.com/ZelosAI/zelosai
+multigroup: false
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: zelosai.io
+  group: zelos
+  kind: ZelosPlatform
+  path: github.com/ZelosAI/zelosai/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: zelosai.io
+  group: zelos
+  kind: ZelosGateway
+  path: github.com/ZelosAI/zelosai/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: zelosai.io
+  group: zelos
+  kind: ZelosBackplane
+  path: github.com/ZelosAI/zelosai/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: zelosai.io
+  group: zelos
+  kind: ZelosMCP
+  path: github.com/ZelosAI/zelosai/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: zelosai.io
+  group: zelos
+  kind: ZelosBroker
+  path: github.com/ZelosAI/zelosai/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: zelosai.io
+  group: zelos
+  kind: ZelosServer
+  path: github.com/ZelosAI/zelosai/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: zelosai.io
+  group: zelos
+  kind: ZelosClient
+  path: github.com/ZelosAI/zelosai/api/v1alpha1
+  version: v1alpha1
+version: "3"

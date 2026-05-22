@@ -1,0 +1,12 @@
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosServer
+metadata:
+  name: default
+  namespace: zelos
+spec:
+  replicas: 1
+  image:
+    repository: ghcr.io/zelosai/zelosserver
+    tag: develop
+  imagePullSecrets:
+    - name: ghcr-pull-secret

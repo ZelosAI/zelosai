@@ -26,3 +26,14 @@ venv/
 build/
 dist/
 *.egg-info/
+
+# Go
+bin/
+*.test
+*.out
+
+# kustomize bundles produced by `make bundle`
+deploy/operator/bundle.yaml
+
+# Mermaid validation scratch
+.mmd-tmp/
