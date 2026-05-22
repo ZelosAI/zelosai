@@ -95,7 +95,7 @@ The token-economics point: subscription LLMs only pay tokens on the
 ## Topic shape
 
 Topic names live in the shared `zelosbackplane` schemas (see
-[zelosbackplane/src/zelosbackplane/schemas](https://github.com/ZelosAI/zelosbackplane/tree/main/src/zelosbackplane/schemas)).
+[zelosbackplane/schemas](https://github.com/ZelosAI/zelosbackplane/tree/main/schemas)).
 At a minimum:
 
 - `inference.requests.<kind>` — work-queue, retained as a work queue
