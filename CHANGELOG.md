@@ -30,12 +30,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Minimum scaled deployment** Kustomize bundle in
   [deploy/minimum/](./deploy/minimum/).
 - **`docs.yml` CI workflow** validating every ```` ```mermaid ```` block.
+- `docs/template/Makefile.go.tmpl` — Go-flavoured Makefile template (build /
+  run / test -race / lint with vet+gofmt+golangci-lint / fmt / tidy /
+  image / push / clean).
+- `docs/template/release.yml.go.tmpl` — Go-flavoured GHCR release workflow,
+  reads version from a top-level `VERSION` file. Same tagging policy as the
+  Python release flow.
+- Renamed `docs/template/Makefile.tmpl` → `docs/template/Makefile.python.tmpl`
+  to match the existing `pyproject.python.tmpl` / `*.go.tmpl` naming
+  convention. `docs/template/README.md` updated to reflect the new file
+  set.
 
 ### Changed
 
 - README's "Future direction" section updated — operator and CRDs are now
   in this pass, not a future one. Documented operator stack is
   Go + kubebuilder (was Python + kopf).
+- **Suite-wide language split documented.** The four async-path / sync-path
+  daemons (`zelosgateway`, `zelosbackplane`, `zelosclient`, `zelosbroker`)
+  were rewritten in Go in their respective repos. `zelosmcp` and `zelosserver`
+  stay Python. The component table in [README.md](./README.md) and
+  [docs/architecture/00-overview.md](./docs/architecture/00-overview.md) now
+  carries a per-repo language column; the per-component pages under
+  [docs/architecture/04-components/](./docs/architecture/04-components/) note
+  the language and updated layout paths (`cmd/<repo>` + `internal/*`).
+- **Backplane wire-contract path updated.** The envelope JSON-Schemas and
+  topic catalog moved from `zelosbackplane/src/zelosbackplane/schemas/` to
+  language-neutral `zelosbackplane/schemas/`. References in
+  [docs/architecture/06-naming-conventions.md](./docs/architecture/06-naming-conventions.md)
+  and the backplane component page updated.
 
 ## [0.1.0-docs-only] — first-pass scaffold (pre-operator)
 

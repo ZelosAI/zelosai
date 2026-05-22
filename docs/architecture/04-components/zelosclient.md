@@ -2,6 +2,7 @@
 
 - **Repo:** [ZelosAI/zelosclient](https://github.com/ZelosAI/zelosclient)
 - **Image:** `ghcr.io/zelosai/zelosclient`
+- **Language:** Go.
 - **Status:** Scaffold — v0.1.0, subscribe-loop + runtime-adapter skeletons.
 
 ## Role in the suite
@@ -55,15 +56,16 @@ client is happily a `docker compose` or `systemd` unit anyway. Keeping
 
 ## Runtime adapters
 
-`src/zelosclient/runtimes/` holds one adapter per inference backend:
+`internal/runtime/` holds one adapter per inference backend:
 
 | Adapter | Backend | Notes |
 |---|---|---|
-| `vllm.py` | vLLM OpenAI-compatible API on `:8000` | Default on `zelos.dgx`-provisioned hosts. |
-| `ollama.py` | Ollama native API | For smaller models / edge boxes. |
+| `vllm.go` | vLLM OpenAI-compatible API on `:8000` | Default on `zelos.dgx`-provisioned hosts. |
+| `ollama.go` | Ollama native API | For smaller models / edge boxes. |
 | (future) | TGI, llama.cpp server, … | Add an adapter, register it. |
 
-Configuration (`config.py`) picks the adapter from `ZELOSCLIENT_RUNTIME=vllm|ollama`.
+Configuration (`internal/config/`) picks the adapter from
+`ZELOSCLIENT_RUNTIME=vllm|ollama`.
 
 ## How it gets onto a host
 

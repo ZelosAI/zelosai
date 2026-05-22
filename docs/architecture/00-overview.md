@@ -51,16 +51,23 @@ flowchart TB
   dgx -. "provisions + delivers container" .-> client
 ```
 
-| Component | Repo | Role | Status |
-|---|---|---|---|
-| **zelosai** | [ZelosAI/zelosai](https://github.com/ZelosAI/zelosai) | Architecture hub + suite templates. Will also host the future Kubernetes operator, Helm charts, and shared libs. | Bootstrapping |
-| **zelosmcp** | [ZelosAI/zelosmcp](https://github.com/ZelosAI/zelosmcp) | MCP aggregator + reverse proxy + tool-description compression + IDE asset push. The "save subscription tokens on tool catalogs" piece. | Mature |
-| **zelosgateway** | [ZelosAI/zelosgateway](https://github.com/ZelosAI/zelosgateway) | HTTP front door — terminates IDE / client requests, applies auth and rate-limits, dispatches to zelosmcp (sync MCP) and zelosbackplane (async inference). | Scaffold |
-| **zelosbackplane** | [ZelosAI/zelosbackplane](https://github.com/ZelosAI/zelosbackplane) | Message bus / event stream. The async fabric: clients pick up requests, run inference, publish responses. NATS first; substrate kept swappable. | Scaffold |
-| **zelosclient** | [ZelosAI/zelosclient](https://github.com/ZelosAI/zelosclient) | Single long-running container that runs **on a provisioned host (not in Kubernetes)**, subscribes to backplane topics, runs inference via vLLM / Ollama, publishes responses. | Scaffold |
-| **zelosbroker** | [ZelosAI/zelosbroker](https://github.com/ZelosAI/zelosbroker) | Asset broker + secure-tunnel endpoint. Pulls customer workspace assets so LLM hosts have the context they need, AND opens a secure tunnel for the sync IDE↔LLM path. The sync-path counterpart to zelosbackplane. | Scaffold |
-| **zelosserver** | [ZelosAI/zelosserver](https://github.com/ZelosAI/zelosserver) | Scope undecided — candidate roles are UI, monitoring dashboards, document/config store. Slot held to prevent later naming churn. | TBD |
-| **zelos.dgx** | [kmechlin/ansible-dgx-collection](https://github.com/kmechlin/ansible-dgx-collection) | Ansible collection that provisions an NVIDIA DGX-class host AND delivers a `zelosclient` container onto it. First of N future `zelos.<hosttype>` collections. | v0.1.0, not yet hw-validated |
+| Component | Repo | Lang | Role | Status |
+|---|---|---|---|---|
+| **zelosai** | [ZelosAI/zelosai](https://github.com/ZelosAI/zelosai) | docs | Architecture hub + suite templates. Will also host the future Kubernetes operator, Helm charts, and shared libs. | Bootstrapping |
+| **zelosmcp** | [ZelosAI/zelosmcp](https://github.com/ZelosAI/zelosmcp) | Python | MCP aggregator + reverse proxy + tool-description compression + IDE asset push. The "save subscription tokens on tool catalogs" piece. | Mature |
+| **zelosgateway** | [ZelosAI/zelosgateway](https://github.com/ZelosAI/zelosgateway) | Go | HTTP front door — terminates IDE / client requests, applies auth and rate-limits, dispatches to zelosmcp (sync MCP) and zelosbackplane (async inference). | Scaffold |
+| **zelosbackplane** | [ZelosAI/zelosbackplane](https://github.com/ZelosAI/zelosbackplane) | Go | Message bus / event stream. The async fabric: clients pick up requests, run inference, publish responses. NATS first; substrate kept swappable. | Scaffold |
+| **zelosclient** | [ZelosAI/zelosclient](https://github.com/ZelosAI/zelosclient) | Go | Single long-running container that runs **on a provisioned host (not in Kubernetes)**, subscribes to backplane topics, bridges to a local vLLM / Ollama runtime, publishes responses. | Scaffold |
+| **zelosbroker** | [ZelosAI/zelosbroker](https://github.com/ZelosAI/zelosbroker) | Go | Asset broker + secure-tunnel endpoint. Pulls customer workspace assets so LLM hosts have the context they need, AND opens a secure tunnel for the sync IDE↔LLM path. The sync-path counterpart to zelosbackplane. | Scaffold |
+| **zelosserver** | [ZelosAI/zelosserver](https://github.com/ZelosAI/zelosserver) | Python | Scope undecided — candidate roles are UI, monitoring dashboards, document/config store. Slot held to prevent later naming churn. | TBD |
+| **zelos.dgx** | [kmechlin/ansible-dgx-collection](https://github.com/kmechlin/ansible-dgx-collection) | Ansible | Ansible collection that provisions an NVIDIA DGX-class host AND delivers a `zelosclient` container onto it. First of N future `zelos.<hosttype>` collections. | v0.1.0, not yet hw-validated |
+
+The four async-path / sync-path daemons (`zelosgateway`, `zelosbackplane`,
+`zelosclient`, `zelosbroker`) were rewritten in Go after the v0.1.0
+bootstrapping pass: long-running concurrent-I/O daemons fit Go's goroutines
++ single-binary distribution better than asyncio + container-with-interpreter.
+`zelosmcp` keeps its mature FastMCP-based Python codebase; `zelosserver`
+stays Python until scope firms up.
 
 ## Two communication paths
 

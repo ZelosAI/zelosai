@@ -47,17 +47,24 @@ flowchart TB
   dgx -. "provisions + delivers container" .-> client
 ```
 
-| Component | Repo | Role |
-|---|---|---|
-| **zelosai** | this repo | Architecture hub + suite templates (here). Future: operator + charts + shared libs. |
-| **zelosmcp** | [ZelosAI/zelosmcp](https://github.com/ZelosAI/zelosmcp) | MCP aggregator + reverse proxy + tool-description compression + IDE asset push. |
-| **zelosgateway** | [ZelosAI/zelosgateway](https://github.com/ZelosAI/zelosgateway) | HTTP front door — auth, rate-limit, sync/async dispatch. |
-| **zelosbackplane** | [ZelosAI/zelosbackplane](https://github.com/ZelosAI/zelosbackplane) | Message bus / event stream (async path). |
-| **zelosclient** | [ZelosAI/zelosclient](https://github.com/ZelosAI/zelosclient) | Host-resident LLM worker (vLLM / Ollama). Runs on provisioned hosts, NOT in Kubernetes. |
-| **zelosbroker** | [ZelosAI/zelosbroker](https://github.com/ZelosAI/zelosbroker) | Sync-conversation channel + ephemeral-workspace-share coordinator. Used by BOTH sync (WebSocket subagent channel) and async (workspace mount-coords in NATS envelopes) flows. |
-| **zelos-vscode** | [ZelosAI/zelos-vscode](https://github.com/ZelosAI/zelos-vscode) | VS Code extension — IDE-side initiator. Configures broker/MCP endpoints, drives OAuth, opens and tears down workspace shares. |
-| **zelosserver** | [ZelosAI/zelosserver](https://github.com/ZelosAI/zelosserver) | Scope TBD — UI / monitoring / doc-config candidate. |
-| **zelos.dgx** | [ZelosAI/zelos.dgx](https://github.com/ZelosAI/zelos.dgx) | Ansible collection — provisions DGX-class hosts AND delivers zelosclient onto them. |
+| Component | Repo | Lang | Role |
+|---|---|---|---|
+| **zelosai** | this repo | docs + Go | Architecture hub + suite templates (here). Also hosts the Kubernetes operator (Go + kubebuilder). |
+| **zelosmcp** | [ZelosAI/zelosmcp](https://github.com/ZelosAI/zelosmcp) | Python | MCP aggregator + reverse proxy + tool-description compression + IDE asset push. |
+| **zelosgateway** | [ZelosAI/zelosgateway](https://github.com/ZelosAI/zelosgateway) | Go | HTTP front door — auth, rate-limit, sync/async dispatch. |
+| **zelosbackplane** | [ZelosAI/zelosbackplane](https://github.com/ZelosAI/zelosbackplane) | Go | Message bus / event stream (async path). |
+| **zelosclient** | [ZelosAI/zelosclient](https://github.com/ZelosAI/zelosclient) | Go | Host-resident LLM worker (vLLM / Ollama). Runs on provisioned hosts, NOT in Kubernetes. |
+| **zelosbroker** | [ZelosAI/zelosbroker](https://github.com/ZelosAI/zelosbroker) | Go | Sync-conversation channel + ephemeral-workspace-share coordinator. Used by BOTH sync (WebSocket subagent channel) and async (workspace mount-coords in NATS envelopes) flows. |
+| **zelos-vscode** | [ZelosAI/zelos-vscode](https://github.com/ZelosAI/zelos-vscode) | TypeScript | VS Code extension — IDE-side initiator. Configures broker/MCP endpoints, drives OAuth, opens and tears down workspace shares. |
+| **zelosserver** | [ZelosAI/zelosserver](https://github.com/ZelosAI/zelosserver) | Python | Scope TBD — UI / monitoring / doc-config candidate. |
+| **zelos.dgx** | [ZelosAI/zelos.dgx](https://github.com/ZelosAI/zelos.dgx) | Ansible | Ansible collection — provisions DGX-class hosts AND delivers zelosclient onto them. |
+
+**Languages per repo.** The four async-path / sync-path daemons
+(`zelosgateway`, `zelosbackplane`, `zelosclient`, `zelosbroker`) are Go —
+small static binaries, concurrent I/O, no interpreter in the image. The
+operator in `zelosai` is also Go (kubebuilder). `zelosmcp` stays Python
+(mature FastMCP-based codebase), `zelosserver` stays Python until its
+scope firms up, and `zelos-vscode` is TypeScript (VS Code extension).
 
 ## Where to start
 
