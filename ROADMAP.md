@@ -18,56 +18,186 @@ ephemeral remote mount that leaves nothing on the LLM host's disk.
 See [docs/architecture/00-overview.md](./docs/architecture/00-overview.md) for
 the long-form rationale and the suite map.
 
-## In flight (v0.2)
+## Path to Early Access (v0.5)
 
-Both target the same release because together they unblock an actual
-end-to-end async-path run.
+EA tag is **v0.5 = packaging-only** (no new features). The data path lands
+in v0.2 / v0.3 / v0.4; v0.5 is runbooks, install bundles, and demos
+validated against real hardware. Three EA deployment strategies — `full`,
+`split`, `solo` — each ships with its own kustomize overlay, runbook,
+and demo. See
+[docs/architecture/14-deployment-strategies.md](./docs/architecture/14-deployment-strategies.md)
+(landing in v0.4) for topologies. Total scope: ~58 OPEN issues across 9
+repos as of 2026-05-22.
 
-- **[A]** [zelosbackplane#11 — Pin substrate to NATS + implement NATS connector](https://github.com/ZelosAI/zelosbackplane/issues/11) — `Priority=P1`. Replaces TODO-returning skeleton with `nats.go` + JetStream against the `inference.requests.*` work queue.
-- **[B]** [zelosclient#10 — Implement vLLM runtime adapter](https://github.com/ZelosAI/zelosclient/issues/10) — `Priority=P1`. Implements `Health()` and `Infer()` against the OpenAI-compatible vLLM API that `zelos.dgx` already provisions.
+## In flight (v0.2) — async-path foundation
 
-## Next (v0.3)
+Tagged dev containers exist; `IDE → backplane → off-cluster client → vLLM → response`
+works end-to-end against an embedded NATS test server.
 
-The broker rewrite + IDE extension; together they unlock the share-coordinator
-primitive both flows depend on.
+- [zelosbackplane#11 — Pin substrate to NATS + implement NATS connector](https://github.com/ZelosAI/zelosbackplane/issues/11) — Feature · P1 · v0.2
+- [zelosclient#10 — Implement vLLM runtime adapter](https://github.com/ZelosAI/zelosclient/issues/10) — Feature · P1 · v0.2
+- [zelosai#30 — Chore: Wire release.yml (multi-arch GHCR build)](https://github.com/ZelosAI/zelosai/issues/30) — Chore · P1 · v0.2
+- [zelosai#31 — Chore: Sync 04-components docs to Go implementation](https://github.com/ZelosAI/zelosai/issues/31) — Chore · P1 · v0.2
+- [zelos-vscode#12 — Chore: Wire release.yml (build .vsix on tag push)](https://github.com/ZelosAI/zelos-vscode/issues/12) — Chore · P1 · v0.2
+- [zelosmcp#20 — Chore: Bump pyproject.toml 0.1.0 → 0.2.0](https://github.com/ZelosAI/zelosmcp/issues/20) — Chore · P1 · v0.2
+- Plus per-repo version-sync chores (`zelosserver#19`, `zelosgateway#19`, `zelosbackplane#22`, `zelosbroker#26`, `zelosclient#21`).
 
-- **[C]** [zelosbroker#11 — Sync-channel + mount-coordinator primitive (WebDAV + HTTP-FUSE)](https://github.com/ZelosAI/zelosbroker/issues/11) — `Priority=P1`. The core rewrite. Replaces "asset puller + secure tunnel" with: WebSocket sync channel + pluggable share protocols + REST share-lifecycle API.
-- **[D]** [zelosbroker#12 — Optional WireGuard wrapper for share traffic](https://github.com/ZelosAI/zelosbroker/issues/12) — `Priority=P2`. Optional encrypted-overlay wrap for IDE↔LLM-host traffic.
-- **[E]** [zelos-vscode#1 — v0.1 IDE extension (config + OAuth + share lifecycle)](https://github.com/ZelosAI/zelos-vscode/issues/1) — `Priority=P1`. Settings panel, "Sign in to Zelos", "Open Zelos share", status-bar share state.
+## Next (v0.3) — share coordinator + IDE + gateway + mcp tools
+
+Synchronous and asynchronous paths both have real plumbing end-to-end.
+Gateway terminates auth and dispatches. Broker brokers shares. The IDE
+extension can sign in, open a share, and drive a full inference round-trip.
+
+**Architecture prerequisite (P0, must land first):**
+
+- [zelosai#32 — Feature: Write docs/architecture/12-auth.md](https://github.com/ZelosAI/zelosai/issues/32) — Docs · P0 · v0.3
+
+**Broker share-coordinator primitive:**
+
+- [zelosbroker#11 — Feature: Sync-channel + mount-coordinator primitive (WebDAV + HTTP-FUSE)](https://github.com/ZelosAI/zelosbroker/issues/11) — Feature · P1 · v0.3
+- [zelosbroker#12 — Feature: Optional WireGuard wrapper for share traffic](https://github.com/ZelosAI/zelosbroker/issues/12) — Feature · P2 · v0.3
+
+**Gateway (3 slices: auth, dispatch, correlation):**
+
+- [zelosgateway — Feature: OIDC auth termination + downstream identity propagation](https://github.com/ZelosAI/zelosgateway/issues) — Feature · P1 · v0.3
+- [zelosgateway — Feature: Sync/async routing + dispatch to mcp/backplane](https://github.com/ZelosAI/zelosgateway/issues) — Feature · P1 · v0.3
+- [zelosgateway — Feature: Envelope round-trip + GET /v1/inference/{id}](https://github.com/ZelosAI/zelosgateway/issues) — Feature · P1 · v0.3
+
+**Backplane runtime hardening:**
+
+- [zelosbackplane — Feature: Envelope schema validation + topic bootstrap + /readyz substrate gating](https://github.com/ZelosAI/zelosbackplane/issues) — Feature · P1 · v0.3
+
+**zelosmcp feature plumbing (5 new gap issues, EA-readiness audit 2026-05-22):**
+
+- [zelosmcp#23 — Feature: Broker HTTP + WebSocket client (share lifecycle + sync-channel frame schema)](https://github.com/ZelosAI/zelosmcp/issues/23) — Feature · P1 · v0.3 (gates #24 + #25)
+- [zelosmcp#24 — Feature: Sync-subagent MCP tools (expose subagents as tools; stream turns over broker WS)](https://github.com/ZelosAI/zelosmcp/issues/24) — Feature · P1 · v0.3
+- [zelosmcp#25 — Feature: Backplane NATS publisher for async-task MCP tools](https://github.com/ZelosAI/zelosmcp/issues/25) — Feature · P1 · v0.3
+- [zelosmcp#26 — Feature: Bearer-token issuance to broker + backplane on tool invoke](https://github.com/ZelosAI/zelosmcp/issues/26) — Feature · P1 · v0.3
+
+**zelos-vscode end-to-end IDE surface:**
+
+- [zelos-vscode#1 — Feature: v0.1 IDE extension (config + OAuth + share lifecycle)](https://github.com/ZelosAI/zelos-vscode/issues/1) — Feature · P1 · v0.3
+- [zelos-vscode#13 — Feature: "Run inference prompt" command (POST /v1/inference + GET poll loop)](https://github.com/ZelosAI/zelos-vscode/issues/13) — Feature · P1 · v0.3
+- [zelos-vscode#14 — Feature: Response display surface (Output channel)](https://github.com/ZelosAI/zelos-vscode/issues/14) — Feature · P1 · v0.3
 
 **Docs aligned with the v0.3 design change:**
 
-- [zelosbroker#14 — docs: rewrite broker design (sync-channel + mount-coordinator)](https://github.com/ZelosAI/zelosbroker/issues/14) — `Priority=P1`.
-- [zelosai#18 — docs: rewrite broker architecture pages + add ROADMAP.md](https://github.com/ZelosAI/zelosai/issues/18) — `Priority=P1`. (This file is the deliverable.)
+- [zelosbroker#14 — docs: rewrite broker design (sync-channel + mount-coordinator)](https://github.com/ZelosAI/zelosbroker/issues/14) — Docs · P1 · v0.3
+- [zelosai#18 — docs: rewrite broker architecture pages + add ROADMAP.md](https://github.com/ZelosAI/zelosai/issues/18) — Docs · P1 · v0.3
 
-## Following (v0.4)
+## Following (v0.4) — hardening + provisioning + zelosserver scope + 3 overlays
 
-- **[F]** [zelosbroker#13 — Add SMB share protocol (Samba sidecar)](https://github.com/ZelosAI/zelosbroker/issues/13) — `Priority=P2`. SMB rounds out the share-protocol palette for Windows-default and macOS-native customers. Split from C because mature pure-Go SMB-server libraries don't exist; this slice introduces a Samba sidecar in the broker Pod.
+Provisioning end-to-end. Operator reports real status. Security envelope
+around shares. zelosserver scope locked. All three deployment overlays
+(`full`, `split`, `solo`) merged. Integration test on kind. Hardware
+procurement kicked off.
+
+**Provisioning:**
+
+- [zelos.dgx — Feature: Implement zelosclient delivery role](https://github.com/ZelosAI/zelos.dgx/issues) — Feature · P1 · v0.4
+- [zelos.dgx — Feature: zdgx smoke subcommand](https://github.com/ZelosAI/zelos.dgx/issues) — Feature · P2 · v0.4
+
+**zelosserver scope (re-targeted from Backlog to v0.4):**
+
+- [zelosai#33 — Feature: Write docs/architecture/13-zelosserver-scope.md](https://github.com/ZelosAI/zelosai/issues/33) — Docs · P1 · v0.4
+- [zelosserver#10 — Feature: zelosserver scope decision + MVP](https://github.com/ZelosAI/zelosserver/issues/10) — Feature · P1 · v0.4
+
+**Operator + security hardening:**
+
+- [zelosai#34 — Feature: Operator status conditions + readiness propagation](https://github.com/ZelosAI/zelosai/issues/34) — Feature · P2 · v0.4
+- [zelosai#35 — Feature: Integration test on kind (operator + minimum deployment)](https://github.com/ZelosAI/zelosai/issues/35) — Feature · P1 · v0.4
+- [zelosbroker — Feature: Share-token security hardening + signed TTL + allowedLLMHosts enforcement](https://github.com/ZelosAI/zelosbroker/issues) — Feature · P1 · v0.4
+
+**Deployment strategies — architecture + three overlays:**
+
+- [zelosai#36 — Feature: Write docs/architecture/14-deployment-strategies.md](https://github.com/ZelosAI/zelosai/issues/36) — Docs · P0 · v0.4
+- [zelosai#37 — Feature: deploy/solo/ overlay](https://github.com/ZelosAI/zelosai/issues/37) — Feature · P1 · v0.4
+- [zelosai#38 — Feature: deploy/split/ overlay](https://github.com/ZelosAI/zelosai/issues/38) — Feature · P1 · v0.4
+- [zelosai#39 — Feature: deploy/full/ overlay](https://github.com/ZelosAI/zelosai/issues/39) — Feature · P1 · v0.4
+
+**Install + observability + hardware:**
+
+- [zelosai#40 — Feature: OTel collector recommended config + 2-3 Grafana dashboards](https://github.com/ZelosAI/zelosai/issues/40) — Feature · P2 · v0.4
+- [zelosai#41 — Chore: Secure access to v0.5 validation hardware](https://github.com/ZelosAI/zelosai/issues/41) — Chore · P0 · v0.4
+
+**CI test workflow rollout (EA-readiness gap C):**
+
+- [zelosai#55 — Chore: Add docs/template/ci.yml.tmpl (Go + Python flavors)](https://github.com/ZelosAI/zelosai/issues/55) — Chore · P2 · v0.4
+- Per-repo adoption chores: [zelosserver#23](https://github.com/ZelosAI/zelosserver/issues/23), [zelosmcp#28](https://github.com/ZelosAI/zelosmcp/issues/28), [zelosgateway#25](https://github.com/ZelosAI/zelosgateway/issues/25), [zelosbroker#30](https://github.com/ZelosAI/zelosbroker/issues/30), [zelosbackplane#26](https://github.com/ZelosAI/zelosbackplane/issues/26), [zelosclient#24](https://github.com/ZelosAI/zelosclient/issues/24), [zelos.dgx#32](https://github.com/ZelosAI/zelos.dgx/issues/32), [zelos-vscode#17](https://github.com/ZelosAI/zelos-vscode/issues/17) — all Chore · P2 · v0.4
+
+**Ops housekeeping:**
+
+- [zelosai#56 — Chore: Document ADD_TO_PROJECT_PAT lifecycle + rotation](https://github.com/ZelosAI/zelosai/issues/56) — Chore · P2 · v0.4
+
+**zelosmcp subagent context (EA-nice-to-have):**
+
+- [zelosmcp#27 — Feature: Subagent artifact loader (skills + hooks bundle)](https://github.com/ZelosAI/zelosmcp/issues/27) — Feature · P2 · v0.4
+
+## v0.5 — EARLY ACCESS TAG (packaging only — no new features)
+
+All three strategies smoke-validated against real hardware. Zero new
+functionality; every issue is documentation, packaging, or validation. If
+a feature sneaks in OR any one strategy fails its smoke run, EA slips.
+
+**Per-strategy runbooks + bundles + demos (3 × 3 = 9 issues):**
+
+- [zelosai#42 — Feature: full strategy — smoke runbook](https://github.com/ZelosAI/zelosai/issues/42) — Docs · P1 · v0.5
+- [zelosai#43 — Feature: full strategy — EA install bundle (deploy/ea/full/)](https://github.com/ZelosAI/zelosai/issues/43) — Feature · P1 · v0.5
+- [zelosai#44 — Feature: full strategy — demo scenario](https://github.com/ZelosAI/zelosai/issues/44) — Docs · P1 · v0.5
+- [zelosai#45 — Feature: split strategy — smoke runbook (WireGuard recommended VPN)](https://github.com/ZelosAI/zelosai/issues/45) — Docs · P1 · v0.5
+- [zelosai#46 — Feature: split strategy — EA install bundle (deploy/ea/split/, WireGuard default)](https://github.com/ZelosAI/zelosai/issues/46) — Feature · P1 · v0.5
+- [zelosai#47 — Feature: split strategy — demo scenario](https://github.com/ZelosAI/zelosai/issues/47) — Docs · P1 · v0.5
+- [zelosai#48 — Feature: solo strategy — smoke runbook](https://github.com/ZelosAI/zelosai/issues/48) — Docs · P1 · v0.5
+- [zelosai#49 — Feature: solo strategy — EA install bundle (deploy/ea/solo/, WireGuard default)](https://github.com/ZelosAI/zelosai/issues/49) — Feature · P1 · v0.5
+- [zelosai#50 — Feature: solo strategy — demo scenario](https://github.com/ZelosAI/zelosai/issues/50) — Docs · P1 · v0.5
+
+**Cross-strategy docs:**
+
+- [zelosai#51 — Feature: Getting-started doc + strategy-chooser flowchart](https://github.com/ZelosAI/zelosai/issues/51) — Docs · P1 · v0.5
+- [zelosai#52 — Feature: Auth provider documentation + Dex recipe + Secret runbook](https://github.com/ZelosAI/zelosai/issues/52) — Docs · P1 · v0.5
+
+**IDE extension per-strategy guidance + Marketplace publish:**
+
+- [zelos-vscode#15 — Feature: Per-strategy connection-config guidance (full Ingress / split WireGuard / solo NodePort)](https://github.com/ZelosAI/zelos-vscode/issues/15) — Feature · P1 · v0.5
+- [zelos-vscode#16 — Feature: .vsix Marketplace publish pipeline](https://github.com/ZelosAI/zelos-vscode/issues/16) — Feature · P2 · v0.5
+
+## v0.6 — pre-1.0 hardening (post-EA, before v1.0)
+
+User explicitly wanted SMB to land before v1.0. v0.6 absorbs SMB plus any
+EA feedback themes.
+
+- [zelosbroker#13 — Feature: Add SMB share protocol (Samba sidecar)](https://github.com/ZelosAI/zelosbroker/issues/13) — Feature · P2 · v0.6 (re-targeted from v0.4 on 2026-05-22)
+
+## v1.0 — production grade (deferred)
+
+Existing decisions stay backlog or move to v1.0:
+
+- [zelosai#13 — Decide future Postgres role](https://github.com/ZelosAI/zelosai/issues/13) — Chore · P3 · v1.0
+- [zelosai#14 — Decide object-storage strategy](https://github.com/ZelosAI/zelosai/issues/14) — Chore · P3 · v1.0
+- [zelosai#15 — Decide search-backend strategy](https://github.com/ZelosAI/zelosai/issues/15) — Chore · P3 · v1.0
+- [zelosai#16 — Decide cache-layer strategy](https://github.com/ZelosAI/zelosai/issues/16) — Chore · P3 · v1.0
+- [zelosai#17 — Decide operator job-scheduler strategy](https://github.com/ZelosAI/zelosai/issues/17) — Chore · P3 · v1.0
+
+New v1.0 themes to file once v0.5 ships: HA story, upgrade choreography,
+multi-tenant isolation, Helm umbrella chart, shared schema libraries,
+cert-manager/TLS ingress, in-cluster NVIDIA device-plugin recipe.
 
 ## Backlog (no release target)
 
-Tracked as Backlog in the project; pull into a release as the need arises.
+Alternative implementations — pull into a release when a customer needs them.
 
-### Strategic decisions still TBD
-
-- [zelosserver#10 — Decide zelosserver scope (UI / monitoring / doc store)](https://github.com/ZelosAI/zelosserver/issues/10).
-- [zelosai#13 — Decide future Postgres role in the suite](https://github.com/ZelosAI/zelosai/issues/13).
-- [zelosai#14 — Decide object-storage strategy (S3/MinIO/GCS) for LLM-generated assets](https://github.com/ZelosAI/zelosai/issues/14).
-- [zelosai#15 — Decide search-backend strategy (OpenSearch / Meilisearch / none)](https://github.com/ZelosAI/zelosai/issues/15).
-- [zelosai#16 — Decide cache-layer strategy for gateway and MCP (Redis vs in-memory vs none)](https://github.com/ZelosAI/zelosai/issues/16).
-- [zelosai#17 — Decide operator job-scheduler strategy for periodic tasks](https://github.com/ZelosAI/zelosai/issues/17).
-
-### Alternative implementations (will be needed when a customer demands them)
-
-- [zelosbackplane#12 — Implement Redis Streams connector](https://github.com/ZelosAI/zelosbackplane/issues/12) — alt substrate.
-- [zelosbackplane#13 — Implement Kafka connector](https://github.com/ZelosAI/zelosbackplane/issues/13) — alt substrate, high throughput / multi-DC.
-- [zelosclient#11 — Implement Ollama runtime adapter](https://github.com/ZelosAI/zelosclient/issues/11) — alt runtime, edge / small-model.
+- [zelosbackplane#12 — Implement Redis Streams connector](https://github.com/ZelosAI/zelosbackplane/issues/12) — alt substrate
+- [zelosbackplane#13 — Implement Kafka connector](https://github.com/ZelosAI/zelosbackplane/issues/13) — alt substrate, high throughput
+- [zelosclient#11 — Implement Ollama runtime adapter](https://github.com/ZelosAI/zelosclient/issues/11) — alt runtime, edge / small-model
 
 ## Open architectural questions
 
-- **`zelosserver` scope.** Cleanest unblock would be a single concrete consumer (UI? monitoring hub?). See backlog #10.
-- **Object-storage durability for assets.** The async path produces "usable assets" the IDE consumes; nothing in the suite persists them right now. Backlog #14.
-- **Cache layer for the gateway.** Likely becomes inevitable once HPA-scaled gateway needs shared rate-limit / session state. Backlog #16.
+- **Object-storage durability for assets.** The async path produces "usable
+  assets" the IDE consumes; nothing persists them today. zelosai#14.
+- **Cache layer for the gateway.** Inevitable once HPA-scaled gateway needs
+  shared rate-limit / session state. zelosai#16.
+- **Multi-tenancy.** EA is single-tenant by decision (`12-auth.md`).
+  Tenant claim → mcp/backplane scoping is a v1.0 item.
 
 ## Process
 
