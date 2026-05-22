@@ -1,0 +1,44 @@
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
+
+# Standard variables (override on command line):  make TAG=v0.1.0 image
+IMAGE ?= ghcr.io/zelosai/<REPO-NAME>
+TAG   ?= dev
+PORT  ?= 8000
+PKG   ?= ./cmd/<REPO-NAME>
+BIN   ?= bin/<REPO-NAME>
+
+.PHONY: help build run test lint fmt tidy image push clean
+
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+build: ## Compile the service binary
+	go build -trimpath -o $(BIN) $(PKG)
+
+run: build ## Run the service locally
+	./$(BIN)
+
+test: ## Run go test with race detector
+	go test -race ./...
+
+lint: ## go vet + gofmt check + golangci-lint
+	go vet ./...
+	@out=$$(gofmt -l .); if [ -n "$$out" ]; then echo "unformatted files:"; echo "$$out"; exit 1; fi
+	@command -v golangci-lint >/dev/null && golangci-lint run || echo "(golangci-lint not installed; skipping)"
+
+fmt: ## gofmt -w + go mod tidy
+	gofmt -w .
+	go mod tidy
+
+tidy: ## go mod tidy
+	go mod tidy
+
+image: ## Build the container image
+	docker build -t $(IMAGE):$(TAG) .
+
+push: image ## Build + push the container image
+	docker push $(IMAGE):$(TAG)
+
+clean: ## Remove build artifacts
+	rm -rf bin/ out/ coverage.out
