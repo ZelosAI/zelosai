@@ -20,7 +20,7 @@
 
 ## Active Branch
 
-- Work on: `claude/bootstrap-suite` (or whichever session branch the harness sets).
+- Work on: `claude/claude-md-docs-0wYXt`.
 
 ## Layout
 
@@ -28,37 +28,48 @@
 zelosai/
 ├── README.md                       # suite-wide entry point
 ├── CLAUDE.md                       # this file
-├── LICENSE  CHANGELOG.md  VERSION
+├── ROADMAP.md  CHANGELOG.md  VERSION  LICENSE
 ├── PROJECT                         # kubebuilder project file
-├── go.mod / go.sum  Makefile  Dockerfile
+├── go.mod / go.sum  Makefile  Dockerfile  .editorconfig
 ├── cmd/main.go                     # manager bootstrap
 ├── api/v1alpha1/                   # CRD Go types (one file per Kind)
 │   ├── common_types.go             # WorkloadSpec + shared specs
+│   ├── groupversion_info.go        # API group registration
 │   ├── zelosplatform_types.go      # umbrella
 │   ├── zelos{gateway,backplane,mcp,broker,server,client}_types.go
 │   └── zz_generated.deepcopy.go    # controller-gen output
 ├── internal/controller/
 │   ├── zelos*_controller.go        # one reconciler per Kind
+│   ├── util.go                     # shared controller helpers
 │   └── render/                     # shared object builders
+│       ├── component.go  configmap.go  deployment.go  hpa.go
+│       ├── nats.go  pvc.go  secretmount.go  service.go  telemetry.go
 ├── config/                         # kubebuilder layout
-│   ├── crd/bases/                  # generated CRD YAMLs
+│   ├── crd/bases/                  # generated CRD YAMLs (7 Kinds)
 │   ├── rbac/   manager/   samples/   default/
 ├── deploy/
 │   ├── operator/                   # kubectl apply -k → installs operator
 │   └── minimum/                    # kubectl apply -k → installs minimum suite
 ├── docs/
 │   ├── architecture/
-│   │   ├── 00-06 (existing suite docs)
+│   │   ├── 00-overview.md          01-async-path.md   02-sync-path.md
+│   │   ├── 03-provisioning.md      04-components/     05-gitflow.md
+│   │   ├── 06-naming-conventions.md
 │   │   ├── 07-container-contract.md  # env / paths / probes / ports
 │   │   ├── 08-crds.md              # CRD field reference
 │   │   ├── 09-dependencies.md      # external deps + provisioning
 │   │   ├── 10-image-registry.md    # GHCR + pull-secret recipe
 │   │   └── 11-telemetry.md         # OpenTelemetry pipeline
 │   ├── runbooks/minimum-deployment.md
-│   └── template/                   # suite-wide templates (unchanged)
-└── .github/workflows/
-    ├── lint.yml                    # markdown-lint + link-check
-    └── docs.yml                    # mermaid block validation
+│   └── template/                   # suite-wide templates derived from here
+├── hack/boilerplate.go.txt         # controller-gen header
+└── .github/
+    ├── CODEOWNERS  pull_request_template.md
+    └── workflows/
+        ├── lint.yml                # markdown-lint + link-check
+        ├── docs.yml                # mermaid block validation
+        ├── add-to-project.yml      # auto-add issues to Zelos Platform Tracker
+        └── tracker-ready-for-qa.yml  # Status → Ready for QA on dev build
 ```
 
 ## How to run it / How to build it
@@ -66,22 +77,32 @@ zelosai/
 ```bash
 make tidy           # go mod tidy
 make build          # build manager binary into bin/manager
+make run            # run manager locally (against current kubectl context)
 make manifests      # regenerate CRD YAML via controller-gen
 make generate       # regenerate zz_generated.deepcopy.go
-make test           # go test ./...
-make image          # docker build
-make deploy         # kubectl apply -k deploy/operator/
+make test           # go test ./... -count=1
+make vet            # go vet ./...
+make lint           # vet + gofmt check
+make image          # docker build → $(IMG)
+make push           # docker push $(IMG)
+make install        # kubectl apply -f config/crd/bases
+make uninstall      # kubectl delete -f config/crd/bases
+make deploy         # kustomize build deploy/operator | kubectl apply -f -
+make undeploy       # kustomize build deploy/operator | kubectl delete -f -
+make bundle         # write deploy/operator/bundle.yaml
 ```
 
-Full end-to-end install (operator + minimum-scaled platform): see
-[docs/runbooks/minimum-deployment.md](./docs/runbooks/minimum-deployment.md).
+`IMG` defaults to `ghcr.io/zelosai/zelosai:develop`; override on the command
+line for releases. Full end-to-end install (operator + minimum-scaled
+platform): see [docs/runbooks/minimum-deployment.md](./docs/runbooks/minimum-deployment.md).
 
 ## What has been verified / What has NOT been verified
 
-- **Verified:** `go build ./...` clean; `controller-gen` regenerates
-  CRDs + deepcopy; `kustomize build deploy/operator/` and
-  `kustomize build deploy/minimum/` produce valid YAML.
-- **Not verified end-to-end in a live cluster:** kind smoke-test from
+- **Verified:** `go build ./...` clean; `controller-gen` regenerates CRDs +
+  deepcopy; `kustomize build deploy/operator/` and
+  `kustomize build deploy/minimum/` produce valid YAML. `go vet ./...` and
+  `gofmt -s -l .` pass.
+- **Not verified end-to-end in a live cluster:** the kind smoke-test from
   [docs/runbooks/minimum-deployment.md](./docs/runbooks/minimum-deployment.md)
   is documented but not executed in this pass (no docker/kind in the dev
   environment used to author this code). Smoke test before tagging
@@ -90,6 +111,10 @@ Full end-to-end install (operator + minimum-scaled platform): see
   / Services / ConfigMaps / PVCs / HPAs / NATS StatefulSet, but advanced
   ordering, upgrade choreography, and conditions are stubbed. Treat the
   operator as v0.2.0 scaffold-grade.
+- **No `release.yml`:** the suite-wide multi-arch container build workflow
+  ([docs/template/release.yml.tmpl](./docs/template/release.yml.tmpl)) is
+  not wired up in `.github/workflows/` yet. `make image` / `make push`
+  work locally but no auto-build on `develop` / `main` / tag push.
 
 ## Configuration surface
 
@@ -101,8 +126,13 @@ Operator flags (set in `config/manager/manager.yaml`):
 
 CI:
 
-- `.github/workflows/lint.yml` — markdown lint, no external secrets needed.
+- `.github/workflows/lint.yml` — markdown lint + link-check, no external secrets needed.
 - `.github/workflows/docs.yml` — mermaid block validation.
+- `.github/workflows/add-to-project.yml` — auto-adds new issues to the
+  Zelos Platform Tracker. Uses the `ADD_TO_PROJECT_PAT` org secret.
+- `.github/workflows/tracker-ready-for-qa.yml` — moves linked project
+  items to `Ready for QA` after a successful `release` workflow run on
+  `develop`. Will start firing once `release.yml` is added.
 
 ## Git / Workflow
 
@@ -115,7 +145,12 @@ CI:
   first feature PR.
 - **Commits:** clear, descriptive messages. Co-author with Claude where applicable.
 - **Tagging:** semver — `v0.1.0`, `v0.2.0`, … Tag from `main` only.
-- **Container builds:** *(not applicable — no container)*
+- **Container builds:** the suite template specifies a `release.yml` workflow
+  that builds multi-arch images (`linux/amd64` + `linux/arm64`) and pushes
+  them to `ghcr.io/zelosai/zelosai` on every push to `develop`, every push
+  to `main`, and every `v*` tag push. That workflow is **not yet present
+  in this repo** — current builds are local via `make image` / `make push`.
+  Adding it is tracked as a v0.3 chore.
 - **PRs:** do not create unless explicitly asked.
 
 ## Issue tracking & releases
@@ -162,9 +197,9 @@ the project's "Item closed" workflow moves it to `Done`.
 
 This repo follows a structured planning ↔ execution flow with Claude. Three
 artifacts stay in lockstep: the [Zelos Platform Tracker](https://github.com/orgs/ZelosAI/projects/2)
-(structured state), this repo's `ROADMAP.md` (human-readable view of THIS
-component), and the suite-wide [`zelosai/ROADMAP.md`](https://github.com/ZelosAI/zelosai/blob/main/ROADMAP.md)
-(cross-component view).
+(structured state), this repo's [`ROADMAP.md`](./ROADMAP.md) (suite-wide
+forward-looking view, since this is the suite hub), and the per-component
+`ROADMAP.md` files in each component repo.
 
 ### When a plan is accepted (planning → backlog)
 
@@ -191,12 +226,14 @@ accepted plan into trackable work BEFORE starting any implementation:
    release), `Backlog` (Release=Backlog), or `Recently shipped` (Status=Done,
    closed in the last release). Link by issue URL with the title + priority
    + release tags.
-6. **Update `zelosai/ROADMAP.md`** as well if the feature matters at the
-   suite level — anything in a v0.x release lane (in-flight / next /
-   following) always goes in the suite roadmap; pure component-local backlog
-   items can stay component-only.
+6. **`zelosai/ROADMAP.md` is the suite roadmap.** Anything in a v0.x release
+   lane (in-flight / next / following) should appear here; pure
+   component-local backlog items can stay component-only in the component
+   repo's `ROADMAP.md`.
 7. **Update suite-architecture memory** if the plan introduces a new
-   component or reshapes how existing ones interact.
+   component or reshapes how existing ones interact — this is the repo
+   that owns [`docs/architecture/`](./docs/architecture/) for the whole
+   suite, so structural changes land here.
 
 This applies to plans of any size. Trivial single-file fixes the user asked
 to be done in-session still skip the issue step (per "When to file vs just
@@ -238,11 +275,14 @@ splitting it (in plan mode) before starting any code.
 
 ## Relation to the Zelos suite
 
-`zelosai` is the suite's architecture hub. Every other repo's CLAUDE.md cites
+`zelosai` is the suite's architecture hub and the only repo that ships a
+Kubernetes operator. Every other repo's CLAUDE.md cites
 [docs/architecture/05-gitflow.md](./docs/architecture/05-gitflow.md) for the
-gitflow rules, derives its CLAUDE.md / CI workflows / Dockerfile / Makefile from
-[docs/template/](./docs/template/), and is documented under
-[docs/architecture/04-components/](./docs/architecture/04-components/).
+gitflow rules, derives its CLAUDE.md / CI workflows / Dockerfile / Makefile
+from [docs/template/](./docs/template/), and is documented under
+[docs/architecture/04-components/](./docs/architecture/04-components/). The
+operator's CRDs in `api/v1alpha1/` are the contract that ties every
+component image together at deploy time.
 
 ## Notes / Blockers
 
@@ -253,6 +293,10 @@ gitflow rules, derives its CLAUDE.md / CI workflows / Dockerfile / Makefile from
   has been validated via `kustomize build` + `go build` only. Run the
   kind smoke test in [docs/runbooks/minimum-deployment.md](./docs/runbooks/minimum-deployment.md)
   before tagging `v0.2.0` on `main`.
+- **`release.yml` not yet wired up.** `tracker-ready-for-qa.yml` won't
+  fire until the suite-template `release.yml` is added; until then,
+  project items must be moved to `Ready for QA` manually after a
+  develop-branch merge.
 - Migration of [zelos.dgx](https://github.com/kmechlin/ansible-dgx-collection)
   from `kmechlin/*` to `ZelosAI/*` is out of scope; the architecture docs
   link to its current home.
