@@ -42,11 +42,17 @@ flowchart LR
 | **NATS** (default substrate) | ZelosBackplane | Operator-installed StatefulSet (single-binary, JetStream) | `ZelosBackplane.spec.substrate=nats` |
 | **Redis** (alt substrate) | ZelosBackplane | External — recommended [Bitnami Redis](https://github.com/bitnami/charts/tree/main/bitnami/redis) | `ZelosBackplane.spec.substrate=redis` + `externalURL` |
 | **Kafka** (alt substrate) | ZelosBackplane | External — recommended [Strimzi Kafka Operator](https://strimzi.io/) | `ZelosBackplane.spec.substrate=kafka` + `externalURL` |
+| **WebDAV** (share protocol) | ZelosBroker (server), ZelosClient (mount) | Server-side: in-process `golang.org/x/net/webdav`. Client-side: native macOS / `davfs2` on Linux / `net use` on Windows. | `ZelosBroker.spec.enabledShareProtocols` (includes `webdav`) |
+| **HTTP-FUSE** (share protocol) | ZelosBroker (REST API), ZelosClient (Go-FUSE driver) | Both sides in-process Go. No external mount tooling. | `ZelosBroker.spec.enabledShareProtocols` (includes `http-fuse`) |
+| **Samba sidecar** (SMB share protocol, optional, v0.4) | ZelosBroker (sidecar container) | Operator-rendered sidecar in the broker Pod when SMB is enabled. Client-side: `cifs-utils` on Linux LLM hosts (or native on Windows / macOS). | `ZelosBroker.spec.sambaSidecar`, `enabledShareProtocols` includes `smb` |
+| **WebSocket sync channel** | ZelosBroker (terminates), ZelosMCP + ZelosClient (peers) | In-process via `coder/websocket`. No external infra. | `ZelosBroker.spec.syncChannelListen` |
+| **WireGuard** (optional traffic wrap) | ZelosBroker, ZelosClient | Kernel WG (mainline since 5.6) + `wireguard-tools` userspace. zelos.dgx Ansible can install the userspace package. | `ZelosBroker.spec.wireGuard.enabled`, `ZelosClient.spec.wireGuard.enabled` |
 | **PVC storage class** | ZelosMCP, ZelosBroker, NATS | Cluster default (`storageClassName` unset) or override | `*.spec.persistence.storageClassName` |
-| **OAuth providers** (GitHub / Okta) | ZelosMCP, ZelosGateway | User-provided Secret keyed by `providers.json` | `*.spec.authProviderSecretRef` |
+| **OAuth providers** (GitHub / Okta) | ZelosMCP, ZelosGateway, ZelosBroker | User-provided Secret keyed by `providers.json` | `*.spec.authProviderSecretRef` |
 | **TLS material** | Optional all | [cert-manager](https://cert-manager.io/) or user-managed Secret | `*.spec.tlsSecretRef` |
 | **GHCR pull secret** | All | `kubectl create secret docker-registry ghcr-pull-secret …`. See [10-image-registry.md](./10-image-registry.md). | `ZelosPlatform.spec.imagePullSecret` |
 | **vLLM / Ollama** | ZelosClient | Host-side via [`zelos.dgx`](../03-provisioning.md) Ansible. Not Kubernetes-deployed. | `ZelosClient.spec.runtimeURL` |
+| **VS Code (host)** | zelos-vscode extension | End-user IDE; extension installed via `.vsix` (Marketplace publish follows v0.2 of the extension). | n/a (not a CRD field) |
 | **Postgres** (future) | (none today) | External | (placeholder field) |
 
 ## Substrate selection guide

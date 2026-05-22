@@ -54,9 +54,10 @@ flowchart TB
 | **zelosgateway** | [ZelosAI/zelosgateway](https://github.com/ZelosAI/zelosgateway) | HTTP front door — auth, rate-limit, sync/async dispatch. |
 | **zelosbackplane** | [ZelosAI/zelosbackplane](https://github.com/ZelosAI/zelosbackplane) | Message bus / event stream (async path). |
 | **zelosclient** | [ZelosAI/zelosclient](https://github.com/ZelosAI/zelosclient) | Host-resident LLM worker (vLLM / Ollama). Runs on provisioned hosts, NOT in Kubernetes. |
-| **zelosbroker** | [ZelosAI/zelosbroker](https://github.com/ZelosAI/zelosbroker) | Asset puller + secure tunnel for synchronous IDE↔LLM (sync path). |
+| **zelosbroker** | [ZelosAI/zelosbroker](https://github.com/ZelosAI/zelosbroker) | Sync-conversation channel + ephemeral-workspace-share coordinator. Used by BOTH sync (WebSocket subagent channel) and async (workspace mount-coords in NATS envelopes) flows. |
+| **zelos-vscode** | [ZelosAI/zelos-vscode](https://github.com/ZelosAI/zelos-vscode) | VS Code extension — IDE-side initiator. Configures broker/MCP endpoints, drives OAuth, opens and tears down workspace shares. |
 | **zelosserver** | [ZelosAI/zelosserver](https://github.com/ZelosAI/zelosserver) | Scope TBD — UI / monitoring / doc-config candidate. |
-| **zelos.dgx** | [kmechlin/ansible-dgx-collection](https://github.com/kmechlin/ansible-dgx-collection) | Ansible collection — provisions DGX-class hosts AND delivers zelosclient onto them. |
+| **zelos.dgx** | [ZelosAI/zelos.dgx](https://github.com/ZelosAI/zelos.dgx) | Ansible collection — provisions DGX-class hosts AND delivers zelosclient onto them. |
 
 ## Where to start
 
