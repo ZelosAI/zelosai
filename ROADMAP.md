@@ -78,4 +78,19 @@ All feature work follows the suite gitflow:
 3. Branch off `develop`. PR back into `develop` with `Closes #N`. Promotion to `main` is a separate PR.
 4. Back-merge `main → develop` when promotion adds commits develop doesn't have.
 
-See [docs/architecture/05-gitflow.md](./docs/architecture/05-gitflow.md).
+See [docs/architecture/05-gitflow.md](./docs/architecture/05-gitflow.md) and the `## Planning and execution loop` section of every repo's `CLAUDE.md`.
+
+## See also: per-repo ROADMAPs
+
+Each component repo carries its own forward-looking view (issues filed
+against that repo, bucketed into `In flight` / `Next` / `Backlog` /
+`Recently shipped`). This file is the cross-component aggregator.
+
+- [zelosbackplane/ROADMAP.md](https://github.com/ZelosAI/zelosbackplane/blob/main/ROADMAP.md)
+- [zelosbroker/ROADMAP.md](https://github.com/ZelosAI/zelosbroker/blob/main/ROADMAP.md)
+- [zelosclient/ROADMAP.md](https://github.com/ZelosAI/zelosclient/blob/main/ROADMAP.md)
+- [zelosgateway/ROADMAP.md](https://github.com/ZelosAI/zelosgateway/blob/main/ROADMAP.md)
+- [zelosmcp/ROADMAP.md](https://github.com/ZelosAI/zelosmcp/blob/main/ROADMAP.md)
+- [zelosserver/ROADMAP.md](https://github.com/ZelosAI/zelosserver/blob/main/ROADMAP.md)
+- [zelos.dgx/ROADMAP.md](https://github.com/ZelosAI/zelos.dgx/blob/main/ROADMAP.md)
+- [zelos-vscode/ROADMAP.md](https://github.com/ZelosAI/zelos-vscode/blob/main/ROADMAP.md)
