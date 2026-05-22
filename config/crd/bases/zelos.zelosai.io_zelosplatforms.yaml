@@ -1,0 +1,975 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.5
+  name: zelosplatforms.zelos.zelosai.io
+spec:
+  group: zelos.zelosai.io
+  names:
+    categories:
+    - zelos
+    kind: ZelosPlatform
+    listKind: ZelosPlatformList
+    plural: zelosplatforms
+    shortNames:
+    - zp
+    singular: zelosplatform
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          ZelosPlatform is the umbrella resource that composes every Zelos component
+          into a single deployable unit. Apply one ZelosPlatform per environment
+          (dev, staging, prod). The reconciler creates owned per-component CRs.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ZelosPlatformSpec is the umbrella spec composing every component.
+            properties:
+              backplane:
+                description: PlatformBackplane extends PlatformComponent with substrate
+                  selection.
+                properties:
+                  autoscaling:
+                    description: AutoscalingSpec is rendered to a HorizontalPodAutoscaler.
+                    properties:
+                      maxReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      minReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      targetCPUUtilization:
+                        format: int32
+                        maximum: 100
+                        minimum: 1
+                        type: integer
+                    required:
+                    - maxReplicas
+                    - minReplicas
+                    type: object
+                  config:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  enabled:
+                    type: boolean
+                  externalURL:
+                    description: ExternalURL points workloads at an existing substrate
+                      when set.
+                    type: string
+                  image:
+                    description: |-
+                      ImageSpec describes a container image to pull. Repository defaults to
+                      ghcr.io/zelosai/<component> when empty. See docs/architecture/10-image-registry.md.
+                    properties:
+                      pullPolicy:
+                        description: PullPolicy is the imagePullPolicy applied to
+                          the rendered container.
+                        enum:
+                        - Always
+                        - IfNotPresent
+                        - Never
+                        type: string
+                      repository:
+                        description: Repository is the full image repository, e.g.
+                          ghcr.io/zelosai/zelosgateway.
+                        type: string
+                      tag:
+                        description: Tag is the image tag. Defaults to the operator's
+                          component default.
+                        type: string
+                    type: object
+                  persistence:
+                    description: PersistenceSpec describes a PVC the operator should
+                      create for the workload.
+                    properties:
+                      accessModes:
+                        description: AccessModes defaults to [ReadWriteOnce].
+                        items:
+                          type: string
+                        type: array
+                      enabled:
+                        description: Enabled toggles PVC creation. Defaults to false
+                          when omitted.
+                        type: boolean
+                      size:
+                        default: 1Gi
+                        description: Size is the requested storage capacity (e.g.
+                          "1Gi").
+                        type: string
+                      storageClassName:
+                        description: StorageClassName overrides the cluster default
+                          storage class.
+                        type: string
+                    type: object
+                  replicas:
+                    format: int32
+                    type: integer
+                  secretRefs:
+                    items:
+                      description: |-
+                        SecretMount projects a single key from an existing Secret into the pod
+                        at /etc/zelos/secrets/<key> by default, and exposes the file path via an
+                        env var (default ZELOS<COMPONENT>_<KEY>_FILE).
+                      properties:
+                        env:
+                          description: Env overrides the env var name used to expose
+                            the file path.
+                          type: string
+                        key:
+                          description: Key is the data key inside the Secret.
+                          type: string
+                        name:
+                          description: Name is the Secret name in the same namespace
+                            as the CR.
+                          type: string
+                        path:
+                          description: Path overrides the default file mount path
+                            (/etc/zelos/secrets/<key>).
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    type: array
+                  substrate:
+                    default: nats
+                    description: Substrate selects the message bus. NATS is operator-installed;
+                      redis/kafka are BYO.
+                    enum:
+                    - nats
+                    - redis
+                    - kafka
+                    type: string
+                  tlsSecretRef:
+                    description: TLSSecretRef references a Secret containing ca.crt/tls.crt/tls.key
+                      for substrate TLS.
+                    type: string
+                type: object
+              broker:
+                description: PlatformBroker extends PlatformComponent with tunnel-broker
+                  fields.
+                properties:
+                  allowedLLMHosts:
+                    items:
+                      type: string
+                    type: array
+                  autoscaling:
+                    description: AutoscalingSpec is rendered to a HorizontalPodAutoscaler.
+                    properties:
+                      maxReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      minReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      targetCPUUtilization:
+                        format: int32
+                        maximum: 100
+                        minimum: 1
+                        type: integer
+                    required:
+                    - maxReplicas
+                    - minReplicas
+                    type: object
+                  config:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  enabled:
+                    type: boolean
+                  image:
+                    description: |-
+                      ImageSpec describes a container image to pull. Repository defaults to
+                      ghcr.io/zelosai/<component> when empty. See docs/architecture/10-image-registry.md.
+                    properties:
+                      pullPolicy:
+                        description: PullPolicy is the imagePullPolicy applied to
+                          the rendered container.
+                        enum:
+                        - Always
+                        - IfNotPresent
+                        - Never
+                        type: string
+                      repository:
+                        description: Repository is the full image repository, e.g.
+                          ghcr.io/zelosai/zelosgateway.
+                        type: string
+                      tag:
+                        description: Tag is the image tag. Defaults to the operator's
+                          component default.
+                        type: string
+                    type: object
+                  persistence:
+                    description: PersistenceSpec describes a PVC the operator should
+                      create for the workload.
+                    properties:
+                      accessModes:
+                        description: AccessModes defaults to [ReadWriteOnce].
+                        items:
+                          type: string
+                        type: array
+                      enabled:
+                        description: Enabled toggles PVC creation. Defaults to false
+                          when omitted.
+                        type: boolean
+                      size:
+                        default: 1Gi
+                        description: Size is the requested storage capacity (e.g.
+                          "1Gi").
+                        type: string
+                      storageClassName:
+                        description: StorageClassName overrides the cluster default
+                          storage class.
+                        type: string
+                    type: object
+                  replicas:
+                    format: int32
+                    type: integer
+                  secretRefs:
+                    items:
+                      description: |-
+                        SecretMount projects a single key from an existing Secret into the pod
+                        at /etc/zelos/secrets/<key> by default, and exposes the file path via an
+                        env var (default ZELOS<COMPONENT>_<KEY>_FILE).
+                      properties:
+                        env:
+                          description: Env overrides the env var name used to expose
+                            the file path.
+                          type: string
+                        key:
+                          description: Key is the data key inside the Secret.
+                          type: string
+                        name:
+                          description: Name is the Secret name in the same namespace
+                            as the CR.
+                          type: string
+                        path:
+                          description: Path overrides the default file mount path
+                            (/etc/zelos/secrets/<key>).
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    type: array
+                  tunnelTransport:
+                    enum:
+                    - tailscale
+                    - wireguard
+                    - mtls-ws
+                    - ssh
+                    type: string
+                type: object
+              client:
+                description: PlatformClient extends PlatformComponent with runtime
+                  selection and DaemonSet hints.
+                properties:
+                  autoscaling:
+                    description: AutoscalingSpec is rendered to a HorizontalPodAutoscaler.
+                    properties:
+                      maxReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      minReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      targetCPUUtilization:
+                        format: int32
+                        maximum: 100
+                        minimum: 1
+                        type: integer
+                    required:
+                    - maxReplicas
+                    - minReplicas
+                    type: object
+                  config:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  enabled:
+                    type: boolean
+                  image:
+                    description: |-
+                      ImageSpec describes a container image to pull. Repository defaults to
+                      ghcr.io/zelosai/<component> when empty. See docs/architecture/10-image-registry.md.
+                    properties:
+                      pullPolicy:
+                        description: PullPolicy is the imagePullPolicy applied to
+                          the rendered container.
+                        enum:
+                        - Always
+                        - IfNotPresent
+                        - Never
+                        type: string
+                      repository:
+                        description: Repository is the full image repository, e.g.
+                          ghcr.io/zelosai/zelosgateway.
+                        type: string
+                      tag:
+                        description: Tag is the image tag. Defaults to the operator's
+                          component default.
+                        type: string
+                    type: object
+                  inCluster:
+                    description: |-
+                      InCluster opts the client into an in-cluster DaemonSet on labeled GPU nodes.
+                      Default deployment path is Ansible/host via zelos.dgx.
+                    type: boolean
+                  model:
+                    type: string
+                  persistence:
+                    description: PersistenceSpec describes a PVC the operator should
+                      create for the workload.
+                    properties:
+                      accessModes:
+                        description: AccessModes defaults to [ReadWriteOnce].
+                        items:
+                          type: string
+                        type: array
+                      enabled:
+                        description: Enabled toggles PVC creation. Defaults to false
+                          when omitted.
+                        type: boolean
+                      size:
+                        default: 1Gi
+                        description: Size is the requested storage capacity (e.g.
+                          "1Gi").
+                        type: string
+                      storageClassName:
+                        description: StorageClassName overrides the cluster default
+                          storage class.
+                        type: string
+                    type: object
+                  replicas:
+                    format: int32
+                    type: integer
+                  runtime:
+                    enum:
+                    - vllm
+                    - ollama
+                    type: string
+                  runtimeURL:
+                    type: string
+                  secretRefs:
+                    items:
+                      description: |-
+                        SecretMount projects a single key from an existing Secret into the pod
+                        at /etc/zelos/secrets/<key> by default, and exposes the file path via an
+                        env var (default ZELOS<COMPONENT>_<KEY>_FILE).
+                      properties:
+                        env:
+                          description: Env overrides the env var name used to expose
+                            the file path.
+                          type: string
+                        key:
+                          description: Key is the data key inside the Secret.
+                          type: string
+                        name:
+                          description: Name is the Secret name in the same namespace
+                            as the CR.
+                          type: string
+                        path:
+                          description: Path overrides the default file mount path
+                            (/etc/zelos/secrets/<key>).
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    type: array
+                  subscribeTopics:
+                    items:
+                      type: string
+                    type: array
+                type: object
+              defaults:
+                description: PlatformDefaults supplies cluster-wide defaults applied
+                  to every component.
+                properties:
+                  image:
+                    description: |-
+                      ImageSpec describes a container image to pull. Repository defaults to
+                      ghcr.io/zelosai/<component> when empty. See docs/architecture/10-image-registry.md.
+                    properties:
+                      pullPolicy:
+                        description: PullPolicy is the imagePullPolicy applied to
+                          the rendered container.
+                        enum:
+                        - Always
+                        - IfNotPresent
+                        - Never
+                        type: string
+                      repository:
+                        description: Repository is the full image repository, e.g.
+                          ghcr.io/zelosai/zelosgateway.
+                        type: string
+                      tag:
+                        description: Tag is the image tag. Defaults to the operator's
+                          component default.
+                        type: string
+                    type: object
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  resources:
+                    description: ResourceRequirements describes the compute resource
+                      requirements.
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+                          This field depends on the
+                          DynamicResourceAllocation feature gate.
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  tolerations:
+                    items:
+                      description: |-
+                        The pod this Toleration is attached to tolerates any taint that matches
+                        the triple <key,value,effect> using the matching operator <operator>.
+                      properties:
+                        effect:
+                          description: |-
+                            Effect indicates the taint effect to match. Empty means match all taint effects.
+                            When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                          type: string
+                        key:
+                          description: |-
+                            Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                            If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                          type: string
+                        operator:
+                          description: |-
+                            Operator represents a key's relationship to the value.
+                            Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
+                            Exists is equivalent to wildcard for value, so that a pod can
+                            tolerate all taints of a particular category.
+                            Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
+                          type: string
+                        tolerationSeconds:
+                          description: |-
+                            TolerationSeconds represents the period of time the toleration (which must be
+                            of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                            it is not set, which means tolerate the taint forever (do not evict). Zero and
+                            negative values will be treated as 0 (evict immediately) by the system.
+                          format: int64
+                          type: integer
+                        value:
+                          description: |-
+                            Value is the taint value the toleration matches to.
+                            If the operator is Exists, the value should be empty, otherwise just a regular string.
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              gateway:
+                description: PlatformComponent is the per-component knob bag rendered
+                  into child CRs.
+                properties:
+                  autoscaling:
+                    description: AutoscalingSpec is rendered to a HorizontalPodAutoscaler.
+                    properties:
+                      maxReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      minReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      targetCPUUtilization:
+                        format: int32
+                        maximum: 100
+                        minimum: 1
+                        type: integer
+                    required:
+                    - maxReplicas
+                    - minReplicas
+                    type: object
+                  config:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  enabled:
+                    type: boolean
+                  image:
+                    description: |-
+                      ImageSpec describes a container image to pull. Repository defaults to
+                      ghcr.io/zelosai/<component> when empty. See docs/architecture/10-image-registry.md.
+                    properties:
+                      pullPolicy:
+                        description: PullPolicy is the imagePullPolicy applied to
+                          the rendered container.
+                        enum:
+                        - Always
+                        - IfNotPresent
+                        - Never
+                        type: string
+                      repository:
+                        description: Repository is the full image repository, e.g.
+                          ghcr.io/zelosai/zelosgateway.
+                        type: string
+                      tag:
+                        description: Tag is the image tag. Defaults to the operator's
+                          component default.
+                        type: string
+                    type: object
+                  persistence:
+                    description: PersistenceSpec describes a PVC the operator should
+                      create for the workload.
+                    properties:
+                      accessModes:
+                        description: AccessModes defaults to [ReadWriteOnce].
+                        items:
+                          type: string
+                        type: array
+                      enabled:
+                        description: Enabled toggles PVC creation. Defaults to false
+                          when omitted.
+                        type: boolean
+                      size:
+                        default: 1Gi
+                        description: Size is the requested storage capacity (e.g.
+                          "1Gi").
+                        type: string
+                      storageClassName:
+                        description: StorageClassName overrides the cluster default
+                          storage class.
+                        type: string
+                    type: object
+                  replicas:
+                    format: int32
+                    type: integer
+                  secretRefs:
+                    items:
+                      description: |-
+                        SecretMount projects a single key from an existing Secret into the pod
+                        at /etc/zelos/secrets/<key> by default, and exposes the file path via an
+                        env var (default ZELOS<COMPONENT>_<KEY>_FILE).
+                      properties:
+                        env:
+                          description: Env overrides the env var name used to expose
+                            the file path.
+                          type: string
+                        key:
+                          description: Key is the data key inside the Secret.
+                          type: string
+                        name:
+                          description: Name is the Secret name in the same namespace
+                            as the CR.
+                          type: string
+                        path:
+                          description: Path overrides the default file mount path
+                            (/etc/zelos/secrets/<key>).
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    type: array
+                type: object
+              imagePullSecret:
+                default: ghcr-pull-secret
+                description: ImagePullSecret is the standard ghcr.io pull-secret name
+                  applied to every workload.
+                type: string
+              mcp:
+                description: PlatformMCP extends PlatformComponent with auth-provider
+                  wiring.
+                properties:
+                  authProviderSecretRef:
+                    type: string
+                  autoscaling:
+                    description: AutoscalingSpec is rendered to a HorizontalPodAutoscaler.
+                    properties:
+                      maxReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      minReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      targetCPUUtilization:
+                        format: int32
+                        maximum: 100
+                        minimum: 1
+                        type: integer
+                    required:
+                    - maxReplicas
+                    - minReplicas
+                    type: object
+                  config:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  enabled:
+                    type: boolean
+                  image:
+                    description: |-
+                      ImageSpec describes a container image to pull. Repository defaults to
+                      ghcr.io/zelosai/<component> when empty. See docs/architecture/10-image-registry.md.
+                    properties:
+                      pullPolicy:
+                        description: PullPolicy is the imagePullPolicy applied to
+                          the rendered container.
+                        enum:
+                        - Always
+                        - IfNotPresent
+                        - Never
+                        type: string
+                      repository:
+                        description: Repository is the full image repository, e.g.
+                          ghcr.io/zelosai/zelosgateway.
+                        type: string
+                      tag:
+                        description: Tag is the image tag. Defaults to the operator's
+                          component default.
+                        type: string
+                    type: object
+                  mcpServersConfigMapRef:
+                    type: string
+                  persistence:
+                    description: PersistenceSpec describes a PVC the operator should
+                      create for the workload.
+                    properties:
+                      accessModes:
+                        description: AccessModes defaults to [ReadWriteOnce].
+                        items:
+                          type: string
+                        type: array
+                      enabled:
+                        description: Enabled toggles PVC creation. Defaults to false
+                          when omitted.
+                        type: boolean
+                      size:
+                        default: 1Gi
+                        description: Size is the requested storage capacity (e.g.
+                          "1Gi").
+                        type: string
+                      storageClassName:
+                        description: StorageClassName overrides the cluster default
+                          storage class.
+                        type: string
+                    type: object
+                  replicas:
+                    format: int32
+                    type: integer
+                  secretRefs:
+                    items:
+                      description: |-
+                        SecretMount projects a single key from an existing Secret into the pod
+                        at /etc/zelos/secrets/<key> by default, and exposes the file path via an
+                        env var (default ZELOS<COMPONENT>_<KEY>_FILE).
+                      properties:
+                        env:
+                          description: Env overrides the env var name used to expose
+                            the file path.
+                          type: string
+                        key:
+                          description: Key is the data key inside the Secret.
+                          type: string
+                        name:
+                          description: Name is the Secret name in the same namespace
+                            as the CR.
+                          type: string
+                        path:
+                          description: Path overrides the default file mount path
+                            (/etc/zelos/secrets/<key>).
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    type: array
+                type: object
+              server:
+                description: PlatformComponent is the per-component knob bag rendered
+                  into child CRs.
+                properties:
+                  autoscaling:
+                    description: AutoscalingSpec is rendered to a HorizontalPodAutoscaler.
+                    properties:
+                      maxReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      minReplicas:
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      targetCPUUtilization:
+                        format: int32
+                        maximum: 100
+                        minimum: 1
+                        type: integer
+                    required:
+                    - maxReplicas
+                    - minReplicas
+                    type: object
+                  config:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  enabled:
+                    type: boolean
+                  image:
+                    description: |-
+                      ImageSpec describes a container image to pull. Repository defaults to
+                      ghcr.io/zelosai/<component> when empty. See docs/architecture/10-image-registry.md.
+                    properties:
+                      pullPolicy:
+                        description: PullPolicy is the imagePullPolicy applied to
+                          the rendered container.
+                        enum:
+                        - Always
+                        - IfNotPresent
+                        - Never
+                        type: string
+                      repository:
+                        description: Repository is the full image repository, e.g.
+                          ghcr.io/zelosai/zelosgateway.
+                        type: string
+                      tag:
+                        description: Tag is the image tag. Defaults to the operator's
+                          component default.
+                        type: string
+                    type: object
+                  persistence:
+                    description: PersistenceSpec describes a PVC the operator should
+                      create for the workload.
+                    properties:
+                      accessModes:
+                        description: AccessModes defaults to [ReadWriteOnce].
+                        items:
+                          type: string
+                        type: array
+                      enabled:
+                        description: Enabled toggles PVC creation. Defaults to false
+                          when omitted.
+                        type: boolean
+                      size:
+                        default: 1Gi
+                        description: Size is the requested storage capacity (e.g.
+                          "1Gi").
+                        type: string
+                      storageClassName:
+                        description: StorageClassName overrides the cluster default
+                          storage class.
+                        type: string
+                    type: object
+                  replicas:
+                    format: int32
+                    type: integer
+                  secretRefs:
+                    items:
+                      description: |-
+                        SecretMount projects a single key from an existing Secret into the pod
+                        at /etc/zelos/secrets/<key> by default, and exposes the file path via an
+                        env var (default ZELOS<COMPONENT>_<KEY>_FILE).
+                      properties:
+                        env:
+                          description: Env overrides the env var name used to expose
+                            the file path.
+                          type: string
+                        key:
+                          description: Key is the data key inside the Secret.
+                          type: string
+                        name:
+                          description: Name is the Secret name in the same namespace
+                            as the CR.
+                          type: string
+                        path:
+                          description: Path overrides the default file mount path
+                            (/etc/zelos/secrets/<key>).
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    type: array
+                type: object
+              telemetry:
+                description: TelemetrySpec controls the OpenTelemetry contract from
+                  docs/architecture/11-telemetry.md.
+                properties:
+                  enabled:
+                    default: true
+                    description: Enabled deploys an OTel collector and injects OTEL_*
+                      env vars into every workload.
+                    type: boolean
+                  externalEndpoint:
+                    description: |-
+                      ExternalEndpoint, when set, suppresses the operator-installed collector
+                      and points workloads at the given OTLP/gRPC endpoint instead.
+                    type: string
+                  image:
+                    description: Image overrides the OpenTelemetry collector image.
+                    properties:
+                      pullPolicy:
+                        description: PullPolicy is the imagePullPolicy applied to
+                          the rendered container.
+                        enum:
+                        - Always
+                        - IfNotPresent
+                        - Never
+                        type: string
+                      repository:
+                        description: Repository is the full image repository, e.g.
+                          ghcr.io/zelosai/zelosgateway.
+                        type: string
+                      tag:
+                        description: Tag is the image tag. Defaults to the operator's
+                          component default.
+                        type: string
+                    type: object
+                  logLevel:
+                    default: info
+                    description: LogLevel is the default OTEL_LOG_LEVEL applied to
+                      all components.
+                    enum:
+                    - trace
+                    - debug
+                    - info
+                    - warn
+                    - error
+                    type: string
+                type: object
+            type: object
+          status:
+            description: ZelosPlatformStatus captures the suite-level reconcile status.
+            properties:
+              children:
+                description: Children lists the per-component CRs the suite currently
+                  owns.
+                items:
+                  description: ChildRef is a minimal reference to an owned per-component
+                    CR.
+                  properties:
+                    kind:
+                      type: string
+                    name:
+                      type: string
+                    ready:
+                      type: string
+                  required:
+                  - kind
+                  - name
+                  type: object
+                type: array
+              conditions:
+                description: Conditions captures Ready, Progressing, Degraded.
+                items:
+                  description: Condition mirrors metav1.Condition with a smaller surface
+                    so CRD validation stays light.
+                  properties:
+                    lastTransitionTime:
+                      type: string
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              observedGeneration:
+                description: ObservedGeneration is the .metadata.generation last reconciled.
+                format: int64
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

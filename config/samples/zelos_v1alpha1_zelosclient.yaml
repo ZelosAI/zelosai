@@ -1,0 +1,22 @@
+# In-cluster client (opt-in). Default path is Ansible/host via zelos.dgx.
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosClient
+metadata:
+  name: default
+  namespace: zelos
+spec:
+  inCluster: true
+  runtime: vllm
+  runtimeURL: http://localhost:8000
+  model: openai/gpt-oss-20b
+  backplaneRef: default
+  subscribeTopics:
+    - inference.requests.codegen
+    - inference.requests.analysis
+  image:
+    repository: ghcr.io/zelosai/zelosclient
+    tag: develop
+  imagePullSecrets:
+    - name: ghcr-pull-secret
+  nodeSelector:
+    zelos.zelosai.io/gpu: "true"

@@ -1,0 +1,109 @@
+# 09 — Dependencies
+
+Everything the Zelos suite needs that lives outside the in-cluster operator
++ component images. Some are operator-installed; others are bring-your-own.
+
+```mermaid
+flowchart LR
+    subgraph Cluster [Kubernetes cluster]
+      direction TB
+      subgraph Op [zelos-system]
+        OP[zelosai operator]
+      end
+      subgraph NS [zelos namespace]
+        GW[ZelosGateway]
+        MCP[ZelosMCP]
+        BR[ZelosBroker]
+        BP[ZelosBackplane]
+        NATS[(NATS JetStream\nop-installed)]
+        OTEL[(OTel Collector\nop-installed)]
+      end
+    end
+    subgraph External [External / BYO]
+      REDIS[(Redis)]
+      KAFKA[(Kafka)]
+      OIDC[(GitHub / Okta OIDC)]
+      VLLM[(vLLM / Ollama on host\nvia zelos.dgx Ansible)]
+    end
+    OP --> GW & MCP & BR & BP & NATS & OTEL
+    BP -. substrate .-> NATS
+    BP -. or substrate .-> REDIS
+    BP -. or substrate .-> KAFKA
+    GW & MCP --> OIDC
+    BP --> VLLM
+    GW & MCP & BR & BP --> OTEL
+```
+
+## Dependency table
+
+| Dependency | Required by | Provisioning | CRD field |
+|---|---|---|---|
+| **OTel Collector** | All components (logs/metrics/traces) | Operator-installed Deployment (1 replica) when `telemetry.enabled=true` and no `externalEndpoint` | `ZelosPlatform.spec.telemetry` |
+| **NATS** (default substrate) | ZelosBackplane | Operator-installed StatefulSet (single-binary, JetStream) | `ZelosBackplane.spec.substrate=nats` |
+| **Redis** (alt substrate) | ZelosBackplane | External — recommended [Bitnami Redis](https://github.com/bitnami/charts/tree/main/bitnami/redis) | `ZelosBackplane.spec.substrate=redis` + `externalURL` |
+| **Kafka** (alt substrate) | ZelosBackplane | External — recommended [Strimzi Kafka Operator](https://strimzi.io/) | `ZelosBackplane.spec.substrate=kafka` + `externalURL` |
+| **PVC storage class** | ZelosMCP, ZelosBroker, NATS | Cluster default (`storageClassName` unset) or override | `*.spec.persistence.storageClassName` |
+| **OAuth providers** (GitHub / Okta) | ZelosMCP, ZelosGateway | User-provided Secret keyed by `providers.json` | `*.spec.authProviderSecretRef` |
+| **TLS material** | Optional all | [cert-manager](https://cert-manager.io/) or user-managed Secret | `*.spec.tlsSecretRef` |
+| **GHCR pull secret** | All | `kubectl create secret docker-registry ghcr-pull-secret …`. See [10-image-registry.md](./10-image-registry.md). | `ZelosPlatform.spec.imagePullSecret` |
+| **vLLM / Ollama** | ZelosClient | Host-side via [`zelos.dgx`](../03-provisioning.md) Ansible. Not Kubernetes-deployed. | `ZelosClient.spec.runtimeURL` |
+| **Postgres** (future) | (none today) | External | (placeholder field) |
+
+## Substrate selection guide
+
+The substrate is the connection point between gateway, broker, MCP, and
+clients. Choose based on operational profile:
+
+- **NATS** — default. Lowest operational burden. Operator installs a
+  1-replica StatefulSet with JetStream; persistence sized via
+  `spec.backplane.persistence`. Excellent for small/medium deployments
+  (≤ ~50k msgs/sec).
+- **Redis** — pick when you already operate Redis and want streams +
+  consumer groups. Bring your own; the operator never installs it.
+  Recommended install: Bitnami Redis chart with `architecture: replication`.
+- **Kafka** — pick when you need durability across DCs or > millions of
+  msgs/sec. Bring your own; the operator never installs it. Recommended
+  install: Strimzi Operator.
+
+## OAuth provider Secret format
+
+The `authProviderSecretRef` Secret must contain at minimum:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zelos-mcp-auth
+type: Opaque
+stringData:
+  auth.key: <Fernet key (32 bytes, urlsafe-base64)>
+  providers.json: |
+    {
+      "github": {
+        "client_id": "...",
+        "client_secret": "...",
+        "scopes": ["read:user"]
+      },
+      "okta": {
+        "client_id": "...",
+        "client_secret": "...",
+        "issuer": "https://<your>.okta.com"
+      }
+    }
+```
+
+Generate `auth.key` once with:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+The Secret name is referenced by the CR; the operator mounts the keys at
+`/etc/zelos/secrets/auth.key` and `/etc/zelos/secrets/providers.json` per
+the [container contract](./07-container-contract.md).
+
+## See also
+
+- [10-image-registry.md](./10-image-registry.md) — GHCR pull secret recipe.
+- [11-telemetry.md](./11-telemetry.md) — OTel collector configuration.
+- [03-provisioning.md](./03-provisioning.md) — host-side provisioning via `zelos.dgx`.

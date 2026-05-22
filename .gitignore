@@ -1,0 +1,39 @@
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Node (for future tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+
+# Python (for future operator + charts dev)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Env files
+.env
+.env.local
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Go
+bin/
+*.test
+*.out
+
+# kustomize bundles produced by `make bundle`
+deploy/operator/bundle.yaml
+
+# Mermaid validation scratch
+.mmd-tmp/

@@ -1,0 +1,30 @@
+---
+name: lint
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli@0.41.0
+      - name: markdownlint
+        run: |
+          markdownlint '**/*.md' --ignore node_modules || true
+          # Soft-fail in v0.1.0; tighten once the doc set stabilises.
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: lychee link-check
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --exclude-mail './docs/**/*.md' './README.md'
+          fail: false
