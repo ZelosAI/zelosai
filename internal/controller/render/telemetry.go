@@ -41,8 +41,8 @@ func BuildTelemetryEnvConfigMap(owner metav1.Object, spec zelosv1alpha1.Telemetr
 	}
 
 	data := map[string]string{
-		"OTEL_LOG_LEVEL":             logLevel,
-		"OTEL_RESOURCE_ATTRIBUTES":   fmt.Sprintf("deployment.environment=%s,k8s.namespace.name=%s,zelos.platform=%s", owner.GetNamespace(), owner.GetNamespace(), owner.GetName()),
+		"OTEL_LOG_LEVEL":              logLevel,
+		"OTEL_RESOURCE_ATTRIBUTES":    fmt.Sprintf("deployment.environment=%s,k8s.namespace.name=%s,zelos.platform=%s", owner.GetNamespace(), owner.GetNamespace(), owner.GetName()),
 		"OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
 	}
 	if enabled {

@@ -32,12 +32,12 @@ gitGraph
    commit id: "WIP a"
    commit id: "polish a"
    checkout develop
-   merge claude/feature-a id: "PR → develop"
+   merge claude/feature-a id: "PR a → develop"
    branch claude/feature-b
    checkout claude/feature-b
    commit id: "feature b"
    checkout develop
-   merge claude/feature-b id: "PR → develop"
+   merge claude/feature-b id: "PR b → develop"
    checkout main
    merge develop tag: "v0.2.0"
 ```

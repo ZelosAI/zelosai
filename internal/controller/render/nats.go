@@ -12,7 +12,9 @@ import (
 )
 
 // NATSName returns the StatefulSet/Service name for the operator-installed NATS substrate.
-func NATSName(backplaneName string) string { return fmt.Sprintf("zelos-backplane-nats-%s", backplaneName) }
+func NATSName(backplaneName string) string {
+	return fmt.Sprintf("zelos-backplane-nats-%s", backplaneName)
+}
 
 // NATSURL is the cluster-internal URL workloads should use to reach NATS.
 func NATSURL(backplaneName, namespace string) string {
