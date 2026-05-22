@@ -1,0 +1,40 @@
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosPlatform
+metadata:
+  name: default
+  namespace: zelos
+spec:
+  imagePullSecret: ghcr-pull-secret
+  defaults:
+    image:
+      pullPolicy: IfNotPresent
+  telemetry:
+    enabled: true
+    logLevel: info
+  gateway:
+    enabled: true
+    replicas: 2
+    autoscaling:
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilization: 70
+  backplane:
+    enabled: true
+    substrate: nats
+    persistence:
+      enabled: true
+      size: 1Gi
+  mcp:
+    enabled: true
+    replicas: 1
+    persistence:
+      enabled: true
+      size: 1Gi
+    authProviderSecretRef: zelos-mcp-auth
+    mcpServersConfigMapRef: zelos-mcp-servers
+  broker:
+    enabled: false
+  server:
+    enabled: false
+  client:
+    enabled: false

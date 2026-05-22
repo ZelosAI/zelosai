@@ -1,0 +1,23 @@
+# zelosmcp auth material. Replace placeholders before applying.
+#
+# Generate auth.key (32 bytes for AES Fernet):
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#
+# providers.json contains GitHub/Okta OAuth client IDs + secrets. Example shape:
+#   {"github": {"client_id": "...", "client_secret": "...", "scopes": ["read:user"]}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zelos-mcp-auth
+  namespace: zelos
+type: Opaque
+stringData:
+  auth.key: "REPLACE_WITH_FERNET_KEY"
+  providers.json: |
+    {
+      "github": {
+        "client_id": "REPLACE",
+        "client_secret": "REPLACE",
+        "scopes": ["read:user"]
+      }
+    }

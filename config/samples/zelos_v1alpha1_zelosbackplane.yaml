@@ -1,0 +1,12 @@
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosBackplane
+metadata:
+  name: default
+  namespace: zelos
+spec:
+  substrate: nats
+  persistence:
+    enabled: true
+    size: 1Gi
+  imagePullSecrets:
+    - name: ghcr-pull-secret

@@ -1,0 +1,85 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - persistentvolumeclaims
+  - serviceaccounts
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - zelos.zelosai.io
+  resources:
+  - zelosbackplanes
+  - zelosbrokers
+  - zelosclients
+  - zelosgateways
+  - zelosmcps
+  - zelosplatforms
+  - zelosservers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - zelos.zelosai.io
+  resources:
+  - zelosbackplanes/status
+  - zelosbrokers/status
+  - zelosclients/status
+  - zelosgateways/status
+  - zelosmcps/status
+  - zelosplatforms/status
+  - zelosservers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - zelos.zelosai.io
+  resources:
+  - zelosplatforms/finalizers
+  verbs:
+  - update

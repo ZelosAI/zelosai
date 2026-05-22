@@ -1,0 +1,11 @@
+# MCP backend catalog consumed by zelosmcp at /var/lib/zelos/zelosmcp/mcpServers.json.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zelos-mcp-servers
+  namespace: zelos
+data:
+  mcpServers.json: |
+    {
+      "mcpServers": {}
+    }

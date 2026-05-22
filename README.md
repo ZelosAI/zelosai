@@ -76,21 +76,53 @@ Dockerfiles, Makefile, PR template, gitignore, editorconfig, CODEOWNERS.
 See [docs/template/README.md](./docs/template/README.md) for the substitution
 rules.
 
-## Future direction
+## Kubernetes operator (v0.2.0)
 
-In a follow-up pass, this repo will also contain:
+This repo now ships a **Go + kubebuilder** operator that manages the rest of
+the Zelos suite in Kubernetes. Two CR shapes:
 
-- A **Python + kopf Kubernetes operator** that reconciles the suite onto either
-  a large multi-node cluster or a single NVIDIA DGX on k3s.
-- A **Helm umbrella chart** with `values-dgx-single.yaml` and `values-k8s-multi.yaml`
-  profiles, wrapping one sub-chart per component.
+- **Umbrella**: [`ZelosPlatform`](./docs/architecture/08-crds.md#zelosplatform-umbrella)
+  composes every component into a single deployable unit.
+- **Per-component**: `ZelosGateway`, `ZelosBackplane`, `ZelosMCP`, `ZelosBroker`,
+  `ZelosServer`, `ZelosClient` for users who don't want the umbrella.
+
+### Quick start
+
+```bash
+# Install the operator (CRDs + RBAC + manager into zelos-system).
+kubectl apply -k deploy/operator/
+
+# Bring up a minimum-scaled deployment.
+kubectl create namespace zelos
+kubectl create secret docker-registry ghcr-pull-secret \
+  --namespace=zelos \
+  --docker-server=ghcr.io \
+  --docker-username=<gh-user> \
+  --docker-password=<PAT-with-read:packages>
+kubectl apply -f deploy/minimum/zelosplatform.yaml
+```
+
+Full step-by-step: [docs/runbooks/minimum-deployment.md](./docs/runbooks/minimum-deployment.md).
+
+### Architecture docs (start here for any operator work)
+
+| # | Doc | Topic |
+|---|---|---|
+| [07](./docs/architecture/07-container-contract.md) | container-contract | Env vars, secret file paths, persistent state, probes, ports, OTel envs |
+| [08](./docs/architecture/08-crds.md) | crds | CRD field reference + mermaid class diagram |
+| [09](./docs/architecture/09-dependencies.md) | dependencies | NATS / Redis / Kafka / OAuth / GHCR pull secret / vLLM |
+| [10](./docs/architecture/10-image-registry.md) | image-registry | GHCR conventions + pull-secret recipe |
+| [11](./docs/architecture/11-telemetry.md) | telemetry | OpenTelemetry logs/metrics/traces pipeline |
+
+### Future direction
+
+Still scoped out of this pass:
+
+- **Helm umbrella chart** with `values-dgx-single.yaml` and `values-k8s-multi.yaml`
+  profiles (the operator + Kustomize bundle covers the gap for now).
 - **Shared libraries** (`schemas/`) — JSON-Schema envelopes for the backplane,
-  OpenAPI specs for the HTTP surfaces, distributed as `zelosai-schemas` (Python)
-  and `@zelosai/schemas` (TS).
-- The **`zelos-ansible-runner`** container image used by the operator's
-  `BareMetalHost` Jobs to invoke `zelos.<hosttype>` Ansible collections.
-
-These are scoped out of the current pass; this pass is **repo bootstrapping**.
+  distributed as `zelosai-schemas` (Python) and `@zelosai/schemas` (TS).
+- The **`zelos-ansible-runner`** container image used by host-provisioning Jobs.
 
 ## License
 

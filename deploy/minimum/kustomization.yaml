@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Minimum scaled deployment of the Zelos suite consumable by the zelosai operator.
+# Apply *after* `kubectl apply -k deploy/operator/` has installed the CRDs.
+#
+# Pre-requisites (the user must fill these in before applying):
+#   1. Edit `ghcr-pull-secret.example.yaml` (or create the Secret via
+#      `kubectl create secret docker-registry ghcr-pull-secret …`).
+#   2. Edit `zelos-mcp-auth.example.yaml` with real auth.key + providers.json.
+#   3. Optional: edit `zelos-mcp-servers.example.yaml` with the desired MCP backend catalog.
+
+namespace: zelos
+
+resources:
+- namespace.yaml
+- ghcr-pull-secret.example.yaml
+- zelos-mcp-auth.example.yaml
+- zelos-mcp-servers.example.yaml
+- zelosplatform.yaml

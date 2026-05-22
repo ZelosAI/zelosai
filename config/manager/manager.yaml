@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zelos-system
+  labels:
+    app.kubernetes.io/name: zelosai
+    app.kubernetes.io/part-of: zelos
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: zelos-system
+  labels:
+    app.kubernetes.io/name: zelosai
+    app.kubernetes.io/component: controller-manager
+    app.kubernetes.io/part-of: zelos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zelosai
+      app.kubernetes.io/component: controller-manager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zelosai
+        app.kubernetes.io/component: controller-manager
+    spec:
+      serviceAccountName: controller-manager
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: manager
+        image: ghcr.io/zelosai/zelosai:develop
+        imagePullPolicy: IfNotPresent
+        args:
+        - "--leader-elect"
+        - "--health-probe-bind-address=:8081"
+        - "--metrics-bind-address=:8080"
+        ports:
+        - containerPort: 8080
+          name: metrics
+        - containerPort: 8081
+          name: probe
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: probe
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: probe
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+      terminationGracePeriodSeconds: 10
