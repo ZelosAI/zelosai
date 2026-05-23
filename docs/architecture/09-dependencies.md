@@ -39,9 +39,9 @@ flowchart LR
 | Dependency | Required by | Provisioning | CRD field |
 |---|---|---|---|
 | **OTel Collector** | All components (logs/metrics/traces) | Operator-installed Deployment (1 replica) when `telemetry.enabled=true` and no `externalEndpoint` | `ZelosPlatform.spec.telemetry` |
-| **NATS** (default substrate) | ZelosBackplane | Operator-installed StatefulSet (single-binary, JetStream) | `ZelosBackplane.spec.substrate=nats` |
-| **Redis** (alt substrate) | ZelosBackplane | External — recommended [Bitnami Redis](https://github.com/bitnami/charts/tree/main/bitnami/redis) | `ZelosBackplane.spec.substrate=redis` + `externalURL` |
-| **Kafka** (alt substrate) | ZelosBackplane | External — recommended [Strimzi Kafka Operator](https://strimzi.io/) | `ZelosBackplane.spec.substrate=kafka` + `externalURL` |
+| **NATS** (pinned for v0.x) | ZelosBackplane | Operator-installed StatefulSet (single-binary, JetStream). First-class substrate — backplane's NATS connector is the only one implemented end-to-end. | `ZelosBackplane.spec.substrate=nats` |
+| **Redis** (alt substrate — skeleton) | ZelosBackplane | External — recommended [Bitnami Redis](https://github.com/bitnami/charts/tree/main/bitnami/redis). Connector remains a TODO stub in v0.x; not selectable at runtime. | `ZelosBackplane.spec.substrate=redis` + `externalURL` |
+| **Kafka** (alt substrate — skeleton) | ZelosBackplane | External — recommended [Strimzi Kafka Operator](https://strimzi.io/). Connector remains a TODO stub in v0.x; not selectable at runtime. | `ZelosBackplane.spec.substrate=kafka` + `externalURL` |
 | **WebDAV** (share protocol) | ZelosBroker (server), ZelosClient (mount) | Server-side: in-process `golang.org/x/net/webdav`. Client-side: native macOS / `davfs2` on Linux / `net use` on Windows. | `ZelosBroker.spec.enabledShareProtocols` (includes `webdav`) |
 | **HTTP-FUSE** (share protocol) | ZelosBroker (REST API), ZelosClient (Go-FUSE driver) | Both sides in-process Go. No external mount tooling. | `ZelosBroker.spec.enabledShareProtocols` (includes `http-fuse`) |
 | **Samba sidecar** (SMB share protocol, optional, v0.4) | ZelosBroker (sidecar container) | Operator-rendered sidecar in the broker Pod when SMB is enabled. Client-side: `cifs-utils` on Linux LLM hosts (or native on Windows / macOS). | `ZelosBroker.spec.sambaSidecar`, `enabledShareProtocols` includes `smb` |
@@ -60,16 +60,18 @@ flowchart LR
 The substrate is the connection point between gateway, broker, MCP, and
 clients. Choose based on operational profile:
 
-- **NATS** — default. Lowest operational burden. Operator installs a
-  1-replica StatefulSet with JetStream; persistence sized via
+- **NATS** — pinned for v0.x. Lowest operational burden. Operator installs
+  a 1-replica StatefulSet with JetStream; persistence sized via
   `spec.backplane.persistence`. Excellent for small/medium deployments
-  (≤ ~50k msgs/sec).
-- **Redis** — pick when you already operate Redis and want streams +
-  consumer groups. Bring your own; the operator never installs it.
-  Recommended install: Bitnami Redis chart with `architecture: replication`.
-- **Kafka** — pick when you need durability across DCs or > millions of
-  msgs/sec. Bring your own; the operator never installs it. Recommended
-  install: Strimzi Operator.
+  (≤ ~50k msgs/sec). This is the only substrate the backplane connector
+  implements end-to-end today; selecting `redis` or `kafka` will leave
+  the bootstrap sidecar in admin-only mode (probes pass, but no pub/sub).
+- **Redis** — skeleton only in v0.x. Connector interface defined; impl is
+  a TODO stub. Pick once the v0.x+ Redis connector lands. Recommended
+  install: Bitnami Redis chart with `architecture: replication`.
+- **Kafka** — skeleton only in v0.x. Same situation as Redis. Pick once
+  the Kafka connector is implemented. Recommended install: Strimzi
+  Operator.
 
 ## OAuth provider Secret format
 
