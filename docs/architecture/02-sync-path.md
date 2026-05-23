@@ -36,10 +36,10 @@ sequenceDiagram
   MCP->>B: open sync channel (target: which zelosclient)
   B->>C: push open frame (sync channel, share coords)
   C->>B: mount workspace share<br/>(WebDAV / HTTP-FUSE / SMB)
-  Note over C,B: share token grants R/W;<br/>nothing on local disk
+  Note over C,B: share token grants R/W — nothing on local disk
   C->>SA: spawn subagent with mount + channel
-  MCP-->>B-->>C-->>SA: turn frame
-  SA-->>C-->>B-->>MCP: streaming tokens + tool_call frames
+  MCP->>SA: turn frame (via B and C)
+  SA-->>MCP: streaming tokens + tool_call frames (via C and B)
   MCP-->>SA: tool_result frame (relayed)
   SA-->>MCP: turn_end frame
   MCP->>B: DELETE /shares/{token}
