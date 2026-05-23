@@ -57,7 +57,7 @@ sequenceDiagram
   MCP-->>IDE: 202 Accepted<br/>{ id, replyTopic }
   BP->>W: claim message<br/>(work-queue ack)
   W->>B: mount workspace share<br/>(WebDAV / HTTP-FUSE / SMB)
-  Note over W,B: share token grants R/W;<br/>nothing on local disk
+  Note over W,B: share token grants R/W — nothing on local disk
   W->>M: inference call (vLLM / Ollama)
   M-->>W: result tokens
   W->>BP: publish on inference.responses.<corrId>
