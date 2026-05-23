@@ -36,6 +36,7 @@ works end-to-end against an embedded NATS test server.
 
 - [zelosbackplane#11 — Pin substrate to NATS + implement NATS connector](https://github.com/ZelosAI/zelosbackplane/issues/11) — Feature · P1 · v0.2
 - [zelosclient#10 — Implement vLLM runtime adapter](https://github.com/ZelosAI/zelosclient/issues/10) — Feature · P1 · v0.2
+- [zelosclient#20 — Feature: zelosclient backplane subscribe loop](https://github.com/ZelosAI/zelosclient/issues/20) — Feature · P1 · v0.2
 - [zelosai#30 — Chore: Wire release.yml (multi-arch GHCR build)](https://github.com/ZelosAI/zelosai/issues/30) — Chore · P1 · v0.2
 - [zelosai#31 — Chore: Sync 04-components docs to Go implementation](https://github.com/ZelosAI/zelosai/issues/31) — Chore · P1 · v0.2
 - [zelos-vscode#12 — Chore: Wire release.yml (build .vsix on tag push)](https://github.com/ZelosAI/zelos-vscode/issues/12) — Chore · P1 · v0.2
