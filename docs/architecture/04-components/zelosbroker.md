@@ -2,6 +2,9 @@
 
 - **Repo:** [ZelosAI/zelosbroker](https://github.com/ZelosAI/zelosbroker)
 - **Image:** `ghcr.io/zelosai/zelosbroker`
+- **Language:** Go (`net/http` + chi router for the control plane;
+  share-protocol implementations in `internal/share/`; optional WireGuard
+  wrapper in `internal/tunnel/`).
 - **Status:** v0.1.0 scaffold. The design has moved to the **share-coordinator
   + sync-channel** model below; implementation lands with features
   [#11](https://github.com/ZelosAI/zelosbroker/issues/11) /

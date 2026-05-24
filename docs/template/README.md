@@ -8,21 +8,22 @@ existing one), copy from here.
 
 | Template | Drop into | Notes |
 |---|---|---|
-| `CLAUDE.md.tmpl` | `<repo>/CLAUDE.md` | Replace `<REPO-NAME>` and the placeholder sections. The **Git / Workflow** section is byte-identical across the suite — don't edit it. |
 | `README.md.tmpl` | `<repo>/README.md` | Replace `<repo-name>` and the one-paragraph description. |
 | `pull_request_template.md` | `<repo>/.github/pull_request_template.md` | Identical across repos. |
-| `lint.yml.python.tmpl` | `<repo>/.github/workflows/lint.yml` | Python repos. Runs ruff + pytest on PR and on pushes to `main` / `develop`. |
 | `lint.yml.go.tmpl` | `<repo>/.github/workflows/lint.yml` | Go repos. Runs go vet + gofmt + go test + golangci-lint. |
-| `release.yml.tmpl` | `<repo>/.github/workflows/release.yml` | Builds and pushes `ghcr.io/zelosai/<repo>` on `main` and on `v*` tag push. |
-| `Dockerfile.python.tmpl` | `<repo>/Dockerfile` | Python service base. Replace `<PACKAGE_NAME>`. |
+| `release.yml.go.tmpl` | `<repo>/.github/workflows/release.yml` | Go repos. Reads version from top-level `VERSION` file; multi-arch image push to `ghcr.io/zelosai/<repo>`. |
 | `Dockerfile.go.tmpl` | `<repo>/Dockerfile` | Go service base. Replace `<REPO-NAME>`. |
-| `Makefile.tmpl` | `<repo>/Makefile` | Standard targets: `build run test lint fmt image push clean`. |
-| `pyproject.python.tmpl` | `<repo>/pyproject.toml` | Replace `<REPO-NAME>`. |
-| `gitignore.python.tmpl` | `<repo>/.gitignore` | Python flavor. |
+| `Makefile.go.tmpl` | `<repo>/Makefile` | Go targets: `build run test lint fmt tidy image push clean`. |
+| `Makefile.python.tmpl` | `<repo>/Makefile` | Python targets: `build run test lint fmt image push clean`. |
+| `pyproject.python.tmpl` | `<repo>/pyproject.toml` | Python repos. Replace `<REPO-NAME>`. |
 | `gitignore.go.tmpl` | `<repo>/.gitignore` | Go flavor. |
 | `editorconfig.tmpl` | `<repo>/.editorconfig` | Identical across the suite. |
 | `CODEOWNERS.tmpl` | `<repo>/.github/CODEOWNERS` | Identical across the suite. |
 | `env.example.tmpl` | `<repo>/.env.example` | Starting point — add component-specific vars. |
+
+Templates not yet materialised (planned): `CLAUDE.md.tmpl`, `lint.yml.python.tmpl`,
+`release.yml.python.tmpl`, `Dockerfile.python.tmpl`, `gitignore.python.tmpl`.
+Until they land, copy from an existing same-language repo of the same flavour.
 
 ## Substitution tokens
 

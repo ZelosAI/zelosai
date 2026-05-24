@@ -2,7 +2,8 @@
 
 - **Repo:** [ZelosAI/zelosgateway](https://github.com/ZelosAI/zelosgateway)
 - **Image:** `ghcr.io/zelosai/zelosgateway`
-- **Status:** Scaffold — v0.1.0, Python / FastAPI skeleton, no live functionality yet.
+- **Language:** Go (`net/http` + chi router).
+- **Status:** Scaffold — v0.1.0, Go skeleton, no live functionality yet.
 
 ## Role in the suite
 
@@ -50,7 +51,7 @@ flowchart LR
 
 Concrete API definition lives in the
 [zelosbackplane OpenAPI](https://github.com/ZelosAI/zelosbackplane) and in
-the gateway's own `src/zelosgateway/routes/` once it lands.
+the gateway's own `internal/routes/` once it lands.
 
 ## See also
 

@@ -2,6 +2,8 @@
 
 - **Repo:** [ZelosAI/zelosbackplane](https://github.com/ZelosAI/zelosbackplane)
 - **Image:** `ghcr.io/zelosai/zelosbackplane`
+- **Language:** Go (substrate-agnostic `Connector` interface; envelope schemas
+  live in a language-neutral top-level `schemas/` directory).
 - **Status:** Scaffold — v0.1.0, connector interfaces + schema skeleton, no
   substrate chosen yet.
 
@@ -59,17 +61,21 @@ flowchart LR
 
 ## Substrate
 
-**Not pinned in v1.** The repo defines a substrate-agnostic connector interface
-(`src/zelosbackplane/connectors/`) with skeleton implementations for NATS, Redis
-Streams, and Kafka. NATS is the most likely first choice (lightweight, native
-work-queue semantics via JetStream, fits single-node deployments well), but the
-abstraction stays so the suite can swap later without rewriting consumers.
+**Not pinned in v1.** The repo defines a substrate-agnostic `Connector`
+interface (`internal/connector/`) with skeleton implementations for NATS,
+Redis Streams, and Kafka. NATS is the most likely first choice (lightweight,
+native work-queue semantics via JetStream, fits single-node deployments well),
+but the abstraction stays so the suite can swap later without rewriting
+consumers.
 
 ## Schemas
 
-The repo holds the canonical **envelope schema** (`schemas/envelopes/v1/`) and
-the topic catalog (`schemas/topics.yaml`). Every publisher and subscriber in
-the suite validates against the envelope. The envelope:
+The repo holds the canonical **envelope schema** at top-level
+`schemas/envelopes/v1/` and the topic catalog at `schemas/topics.yaml` —
+language-neutral paths consumed by both the Go services (via a tiny
+`//go:embed` package at `schemas/schemas.go`) and Python consumers
+(zelosmcp / zelosserver) reading the files directly. Every publisher and
+subscriber in the suite validates against the envelope. The envelope:
 
 ```
 {

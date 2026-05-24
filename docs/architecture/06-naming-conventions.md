@@ -23,7 +23,8 @@ Pin images in deployment manifests by **tag** (`:vX.Y.Z`) or **digest**
 
 ## Backplane topics
 
-Topics live in `zelosbackplane/src/zelosbackplane/schemas/topics.yaml`. Naming:
+Topics live in `zelosbackplane/schemas/topics.yaml` (top-level,
+language-neutral). Naming:
 
 - Dotted hierarchy, lowercase: `<domain>.<action>.<qualifier>`.
 - Examples:
@@ -39,7 +40,7 @@ schema-version negotiation, etc.).
 ## Envelope fields
 
 Every backplane message uses the canonical envelope from
-`zelosbackplane/src/zelosbackplane/schemas/envelopes/v1/`:
+`zelosbackplane/schemas/envelopes/v1/`:
 
 | Field | Type | Meaning |
 |---|---|---|
