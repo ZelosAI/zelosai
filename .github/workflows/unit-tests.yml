@@ -1,0 +1,28 @@
+---
+# Go unit tests (Workflow name: unit-tests).
+#
+# Required check on PRs into develop (branch protection).
+# Runs on PR open/sync and on direct push to develop.
+name: unit-tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [develop]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: make test
+        run: make test

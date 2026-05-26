@@ -1,0 +1,55 @@
+---
+# Integration tests for the VS Code extension flavour.
+#
+# Uses @vscode/test-electron to run the packaged .vsix in headless VS Code.
+# Reads version from package.json. There is no dev container for the
+# extension (it ships as a .vsix attached to a GitHub release), so the
+# "dev image" concept is replaced by the dev-tag artefact built by
+# release.yml.
+name: integration-tests
+
+on:
+  workflow_run:
+    workflows: ["release"]
+    types: [completed]
+    branches: [develop]
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  integration:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: make test-integration
+        run: xvfb-run -a make test-integration
+
+      - name: Post status check on develop HEAD
+        if: always()
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api -X POST \
+            "repos/${{ github.repository }}/statuses/${SHA}" \
+            -f state="${STATE}" \
+            -f context="integration-tests" \
+            -f target_url="${RUN_URL}" \
+            -f description="extension integration tests (headless VS Code)"

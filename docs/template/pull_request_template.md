@@ -10,12 +10,14 @@
 ## Test plan
 
 - [ ] `make lint` passes
-- [ ] `make test` passes
+- [ ] `make test` passes (unit tests — `unit-tests` workflow gate)
+- [ ] `make test-integration` passes locally if the change touches runtime behaviour (otherwise the `integration-tests` workflow run against the dev container post-merge covers it)
 - [ ] If container changed: `make image` succeeds
-- [ ] If runtime behavior changed: <describe manual verification>
+- [ ] If runtime behaviour changed: <describe manual verification>
 
 ## Gitflow check
 
 - [ ] Targeting `develop` (NOT `main`). See [05-gitflow.md](https://github.com/ZelosAI/zelosai/blob/main/docs/architecture/05-gitflow.md).
-- [ ] Branch is `claude/<slug>` or topic branch off `develop`.
+- [ ] Branch name matches `^(feature|fix|chore|docs)/[0-9]+-[a-z0-9-]+$` (enforced by `branch-lint`). The numeric prefix is the GitHub issue this PR resolves.
+- [ ] PR body contains `Closes #<N>` (or `Fixes #N` / `Resolves #N`) referencing that same issue number.
 - [ ] No semver tag in this PR (tags are cut from `main` only).

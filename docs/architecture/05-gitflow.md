@@ -12,9 +12,32 @@
 - **`develop`** — integration branch. All feature work merges here first. If
   `develop` doesn't exist on the remote yet, create it from `main` before opening
   the first feature PR.
-- **`claude/<slug>`** — session branches created by Claude when working on a
-  task. Pattern: `claude/<short-description>` (e.g. `claude/bootstrap-zelosgateway`).
-- **Other topic branches** — `feat/...`, `fix/...`, `chore/...` for non-Claude work.
+- **`<type>/<issue-number>-<slug>`** — every feature, fix, chore, or docs
+  branch. Canonical pattern is enforced by the `branch-lint` workflow:
+
+  ```
+  ^(feature|fix|chore|docs)/[0-9]+-[a-z0-9-]+$
+  ```
+
+  - `<type>` ∈ `{feature, fix, chore, docs}` — matches the GitHub issue's Work
+    type (`feature` covers `Feature`; `fix` covers `Bug`; `chore`/`docs` cover
+    the rest).
+  - `<issue-number>` — the GitHub issue this work resolves. Required so the
+    issue ↔ branch ↔ PR chain is unambiguous in git history. The
+    `tracker-in-progress` workflow parses this number on push to auto-flip the
+    issue's project Status to `In Progress`.
+  - `<slug>` — kebab-case extract from the issue title.
+
+  Worked examples:
+
+  - `feature/23-envelope-schema-validation`
+  - `fix/61-docker-base-bump`
+  - `chore/55-ci-template`
+  - `docs/36-deployment-strategies-doc`
+
+  `develop` and `main` are allowlisted on the `branch-lint` workflow so
+  promotion PRs (`develop → main`) and back-merge PRs (`main → develop`) pass
+  without the pattern.
 
 ## Flow
 
@@ -27,17 +50,17 @@ gitGraph
    branch develop
    checkout develop
    commit id: "develop created"
-   branch claude/feature-a
-   checkout claude/feature-a
+   branch feature/42-thing-a
+   checkout feature/42-thing-a
    commit id: "WIP a"
    commit id: "polish a"
    checkout develop
-   merge claude/feature-a id: "PR a → develop"
-   branch claude/feature-b
-   checkout claude/feature-b
-   commit id: "feature b"
+   merge feature/42-thing-a id: "PR a → develop"
+   branch fix/43-thing-b
+   checkout fix/43-thing-b
+   commit id: "fix b"
    checkout develop
-   merge claude/feature-b id: "PR b → develop"
+   merge fix/43-thing-b id: "PR b → develop"
    checkout main
    merge develop tag: "v0.2.0"
 ```
@@ -50,10 +73,15 @@ time. The `release.yml` workflow then builds + pushes the
 
 Rules:
 
-- **One feature, one PR**, targeting `develop`.
+- **One feature, one PR**, targeting `develop`. The PR body must include
+  `Closes #<N>` (or `Fixes #N` / `Resolves #N`) referencing the same issue
+  number that's in the branch name.
 - **Never** open a PR directly from a feature branch into `main`.
 - Promotion `develop` → `main` is its **own** PR, cut deliberately when a set of
-  features has integrated cleanly on `develop`.
+  features has integrated cleanly on `develop`. Promotion PRs are blocked at
+  the branch-protection layer unless the most recent `integration-tests` run
+  on `develop` HEAD is green (`promotion-check` workflow + branch protection
+  required-check).
 - Tags (`vX.Y.Z`) are pushed to `main` only.
 
 ## Commit messages
@@ -118,10 +146,18 @@ Pointer semantics:
 
 ### Version source
 
-The workflow reads the version from one of two places (in this order):
+The workflow reads the version from a language-appropriate source file (the
+`release.yml` workflow currently in each repo encodes the per-language
+selection):
 
-1. `galaxy.yml` → `version:` (Ansible collections — currently only `zelos.dgx`).
-2. `pyproject.toml` → `[project] version = "X.Y.Z"` (every other repo).
+| Language | Source of version truth |
+|---|---|
+| Go services | `VERSION` (single line) |
+| Python services | `pyproject.toml` → `[project] version = "X.Y.Z"` |
+| TypeScript / Node | `package.json` → `"version"` |
+| Ansible collections | `galaxy.yml` → `version:` |
+
+The Go operator (`zelosai`) reads from `VERSION` as well.
 
 On `v<X.Y.Z>` tag push, the workflow **validates that the tag matches the
 in-repo version** and fails the build if they diverge. Bump
@@ -144,8 +180,44 @@ develop merge.
 - **Do not create a PR unless explicitly asked.** Push branches; let the human
   open the PR.
 - Use the standard [PR template](../template/pull_request_template.md) — checks
-  for `make lint`, `make test`, container build (if applicable), and the
-  gitflow checks (targeting `develop`, branch shape, no tag in the PR).
+  for `make lint`, `make test`, `make test-integration` (if applicable),
+  container build (if applicable), and the gitflow checks (targeting
+  `develop`, branch shape matching `^(feature|fix|chore|docs)/[0-9]+-[a-z0-9-]+$`,
+  `Closes #N` referencing the same issue number as the branch, no tag in the
+  PR).
+
+## CI gates and status automation
+
+Every repo runs the same gate set (templates live in
+[`docs/template/`](../template/)):
+
+| Workflow | Trigger | Gate / effect |
+|---|---|---|
+| `branch-lint` | PR open / sync | Fails the PR if `head_ref` doesn't match the canonical branch regex. Allowlists `develop` and `main`. |
+| `unit-tests` | PR open / sync, push to `develop` | Per-language unit tests (`make test`). **Required check** on PRs into `develop`. |
+| `release` (existing) | Push to `develop`, `main`, or `v*` tag | Builds + pushes multi-arch container to GHCR. |
+| `integration-tests` | `workflow_run` on `release` success on `develop` | Pulls `:vX.Y.Z-dev`, runs `make test-integration`. Reports `integration-tests` status on develop HEAD. |
+| `tracker-in-progress` | Push to `<type>/<N>-<slug>` branch | Auto-flips issue `N`'s project Status to `In Progress`. |
+| `tracker-ready-for-qa` | `workflow_run` on `release` success on `develop` | Parses `Closes #N` from merged PR body, flips Status to `Ready for QA`. |
+| `promotion-check` | PR `develop → main` open / sync | Looks up most recent `integration-tests` run on `develop`; posts `promotion-gate` status. **Required check** on promotion PRs at branch protection. |
+
+Status transitions through the lifecycle:
+
+```
+Todo  ──push <type>/<N>-... branch──►  In Progress
+                                            │
+                                            └── PR feature → develop merged + release builds dev container
+                                                  │
+                                                  ▼
+                                            Ready for QA
+                                                  │
+                                                  └── promotion PR develop → main merged + integration green
+                                                        │
+                                                        └── auto-close on `Closes #N`
+                                                              │
+                                                              ▼
+                                                            Done
+```
 
 ## Why `develop` and not trunk-based?
 
