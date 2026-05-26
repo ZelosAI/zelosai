@@ -92,9 +92,18 @@ jobs:
             exit 0
           fi
 
-          gh project item-edit \
-            --project-id "$PROJECT_ID" \
-            --id "$ITEM_ID" \
-            --field-id "$FIELD_ID" \
-            --single-select-option-id "$OPTION_ID"
+          # Use raw GraphQL with a minimal return shape (`projectV2Item.id`
+          # only) to avoid `gh project item-edit`'s default response which
+          # tries to read all fieldValues — that trips on the milestone field
+          # which requires repo scope the Projects-only PAT lacks.
+          gh api graphql -f query='
+            mutation($p:ID!, $i:ID!, $f:ID!, $o:String!) {
+              updateProjectV2ItemFieldValue(input:{
+                projectId:$p, itemId:$i, fieldId:$f,
+                value:{ singleSelectOptionId:$o }
+              }) { projectV2Item { id } }
+            }' \
+            -f p="$PROJECT_ID" -f i="$ITEM_ID" \
+            -f f="$FIELD_ID" -f o="$OPTION_ID" \
+            >/dev/null
           echo "issue #$ISSUE (item $ITEM_ID) -> Status=In Progress"

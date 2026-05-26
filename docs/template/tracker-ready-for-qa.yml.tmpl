@@ -98,11 +98,19 @@ jobs:
                 }' -f o="$OWNER" -f r="$REPO" -F n="$n" \
                 --jq '.data.repository.issue.projectItems.nodes[]? | select(.project.number==2) | .id')
               if [ -n "$ITEM_ID" ]; then
-                GH_TOKEN="$PROJECT_PAT" gh project item-edit \
-                  --project-id "$PROJECT_ID" \
-                  --id "$ITEM_ID" \
-                  --field-id "$FIELD_ID" \
-                  --single-select-option-id "$OPTION_ID"
+                # Raw GraphQL with minimal return — avoids `gh project
+                # item-edit` reading restricted fields (milestone, etc.) in
+                # its default response.
+                GH_TOKEN="$PROJECT_PAT" gh api graphql -f query='
+                  mutation($p:ID!, $i:ID!, $f:ID!, $o:String!) {
+                    updateProjectV2ItemFieldValue(input:{
+                      projectId:$p, itemId:$i, fieldId:$f,
+                      value:{ singleSelectOptionId:$o }
+                    }) { projectV2Item { id } }
+                  }' \
+                  -f p="$PROJECT_ID" -f i="$ITEM_ID" \
+                  -f f="$FIELD_ID" -f o="$OPTION_ID" \
+                  >/dev/null
                 echo "  issue #$n (item $ITEM_ID) -> Status=Ready for QA"
               else
                 echo "  issue #$n not in project #2; skipped"
