@@ -1,0 +1,32 @@
+---
+# TypeScript unit tests + typecheck (Workflow name: unit-tests).
+#
+# Required check on PRs into develop (branch protection).
+# Runs on PR open/sync and on direct push to develop.
+name: unit-tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [develop]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: npm ci
+        run: npm ci
+      - name: typecheck
+        run: npm run typecheck
+      - name: test
+        run: npm run test
