@@ -1,0 +1,39 @@
+---
+# Ansible collection lint + syntax check (Workflow name: unit-tests).
+#
+# Required check on PRs into develop (branch protection).
+# molecule integration tests are deferred to v1.0 per the deployment-strategy
+# decision (see zelos.dgx CLAUDE.md + the v0.3-prep plan); only static checks
+# run here.
+name: unit-tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [develop]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint
+      - name: ansible-lint
+        run: ansible-lint
+      - name: syntax-check playbooks
+        run: |
+          for p in playbooks/*.yml; do
+            [ -f "$p" ] || continue
+            ansible-playbook "$p" --syntax-check -i localhost,
+          done

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Configure branch protection on `main` + `develop` for a Zelos suite repo.
+#
+# Usage:
+#   ./branch-protection.sh ZelosAI/<repo>
+#
+# Idempotent: re-running updates the protection ruleset to match the spec
+# below. Run AFTER the new workflows (branch-lint, unit-tests, promotion-check)
+# have completed at least one run on the repo, so GitHub recognises the
+# required-check names.
+set -euo pipefail
+
+REPO="${1:?usage: $0 ZelosAI/<repo>}"
+
+main_payload=$(cat <<'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["branch-lint", "unit-tests", "promotion-gate"]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null,
+  "required_linear_history": true,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_conversation_resolution": false,
+  "lock_branch": false,
+  "allow_fork_syncing": true
+}
+EOF
+)
+
+develop_payload=$(cat <<'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["branch-lint", "unit-tests"]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null,
+  "required_linear_history": false,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_conversation_resolution": false,
+  "lock_branch": false,
+  "allow_fork_syncing": true
+}
+EOF
+)
+
+echo ">>> $REPO :: protecting main"
+echo "$main_payload" | gh api -X PUT \
+  "repos/$REPO/branches/main/protection" \
+  -H "Accept: application/vnd.github+json" \
+  --input -
+
+echo ">>> $REPO :: protecting develop"
+echo "$develop_payload" | gh api -X PUT \
+  "repos/$REPO/branches/develop/protection" \
+  -H "Accept: application/vnd.github+json" \
+  --input -
+
+echo ">>> $REPO :: done"
+gh api "repos/$REPO/branches/main/protection" \
+  --jq '"main:    required = \(.required_status_checks.contexts | join(", "))"'
+gh api "repos/$REPO/branches/develop/protection" \
+  --jq '"develop: required = \(.required_status_checks.contexts | join(", "))"'
