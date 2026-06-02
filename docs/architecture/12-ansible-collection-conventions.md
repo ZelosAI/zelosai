@@ -198,3 +198,31 @@ docs/
   *outputs* (templates, facts, config) rather than hard-importing its roles, so providers are
   swappable (e.g. `zelos.kubernetes.provision.proxmox` consumes `zelos.proxmox`'s template name +
   API creds rather than depending on the collection).
+
+## 13. Secret harvesting (the `secrets` role)
+
+A collection that **mints credentials on a target host** (API tokens, keyrings, …) must be able to
+bring them **back to the controller** and store them inline-encrypted — the ansible-native
+replacement for shell `emit-secrets`/`.env` flows.
+
+- **Shape:** a top-level, cross-cutting **`secrets`** role (no provisioning layer; FQCN
+  `zelos.<col>.secrets`) + a **`save_secrets`** playbook. Run after the provisioning playbooks.
+- **Per-collection, per-bed output:** `secrets/<bed>.<col>.secrets.yaml`, **0600**, with **each
+  value an inline `!vault |` block** (`ansible-vault encrypt_string --stdin-name`). Gitignored
+  (except an `example.<col>.secrets.yaml`); inline-vault makes them safe to commit if an operator opts in.
+- **Source spec** — a `sources:` list of `{name, from, …}` derived (with literal fallbacks) from the
+  same inventory dicts the producing roles read. `from`: `file` (raw), `file_b64` (binary-safe),
+  `file_grep` (`export KEY='…'`), `shell` (stdout). `optional: true` skips absent sources.
+- **Harvest path:** gather the value **on the host**, pipe it via **stdin** into `encrypt_string`
+  **on the controller** (`no_log` throughout — plaintext never lands on disk; a `secrets_debug`
+  toggle lifts it for troubleshooting on a throwaway bed).
+- **Merge, never overwrite:** harvested keys **update in place**, operator-**provided** keys are
+  **preserved**, new keys appended, header kept (a small stdlib `files/merge_secrets.py`). Operators
+  can hand-add secrets to the file and a later harvest won't clobber them.
+- **Vault password:** `secrets.vault_password_file` → `$ANSIBLE_VAULT_PASSWORD_FILE` →
+  `$ANSIBLE_VAULT_PASSWORD` (staged to a temp 0600 file). Clear `ANSIBLE_VAULT_PASSWORD_FILE` for the
+  `encrypt_string` call so the resolved pass-file is the sole default vault-id (else `rc 5`,
+  "vault-ids default,default … specify the vault-id"). Ship `scripts/vault-pass-client.sh` (an
+  executable pass-file emitting `$ANSIBLE_VAULT_PASSWORD`) so a single env var works for **both**
+  harvest and decrypt — ansible-core has no raw-env *decrypt* config, only the file form.
+- **Consume** anywhere with `vars_files:` + a matching vault password.
