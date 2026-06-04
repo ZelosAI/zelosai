@@ -125,7 +125,7 @@ func BuildDeployment(in DeploymentInput) *appsv1.Deployment {
 					Volumes:            volumes,
 					Containers: []corev1.Container{{
 						Name:            in.Component.Name,
-						Image:           fmt.Sprintf("%s:%s", image, tag),
+						Image:           ImageRef(image, tag),
 						ImagePullPolicy: pullPolicy,
 						Ports: []corev1.ContainerPort{
 							{Name: "http", ContainerPort: in.Component.Port, Protocol: corev1.ProtocolTCP},
