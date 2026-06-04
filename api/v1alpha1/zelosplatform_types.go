@@ -129,22 +129,45 @@ type PlatformClient struct {
 type ZelosPlatformStatus struct {
 	CommonStatus `json:",inline"`
 
-	// Children lists the per-component CRs the suite currently owns.
+	// Phase is a short, human-readable summary of where the install is in
+	// its lifecycle (e.g. Pending, Progressing, Ready, Degraded). It is
+	// derived from the conditions and is intended for `kubectl get` display
+	// only; automation should read the conditions.
+	// +optional
+	Phase string `json:"phase,omitempty"`
+
+	// Children lists the per-component CRs the suite currently owns, each
+	// with its rolled-up readiness so operators can see component health
+	// without describing every child CR.
 	// +optional
 	Children []ChildRef `json:"children,omitempty"`
 }
 
-// ChildRef is a minimal reference to an owned per-component CR.
+// ChildRef is a reference to an owned per-component CR plus its rolled-up
+// readiness as observed by the umbrella reconciler.
 type ChildRef struct {
-	Kind  string `json:"kind"`
-	Name  string `json:"name"`
+	// Kind is the child CR Kind (e.g. ZelosGateway).
+	Kind string `json:"kind"`
+
+	// Name is the child CR name.
+	Name string `json:"name"`
+
+	// Ready is the string form of the child's Ready condition status
+	// ("True"/"False"/"Unknown").
+	// +optional
 	Ready string `json:"ready,omitempty"`
+
+	// Message is a human-readable explanation of the child's current
+	// readiness (e.g. "2/2 replicas available").
+	// +optional
+	Message string `json:"message,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=zp,categories=zelos
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // ZelosPlatform is the umbrella resource that composes every Zelos component

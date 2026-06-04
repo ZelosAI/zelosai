@@ -7,6 +7,7 @@ import (
 	"github.com/ZelosAI/zelosai/internal/controller/render"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -74,9 +75,15 @@ func (r *ZelosGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
+	wr := deploymentReadiness(ctx, r.Client, types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace})
+	applyWorkloadConditions(&gw.Status.CommonStatus, gw.Generation, wr)
 	gw.Status.ObservedGeneration = gw.Generation
 	_ = r.Status().Update(ctx, &gw)
 
+	// Requeue while the workload is still coming up so conditions track readiness.
+	if !wr.Available {
+		return ctrl.Result{RequeueAfter: componentRequeueInterval()}, nil
+	}
 	return ctrl.Result{}, nil
 }
 

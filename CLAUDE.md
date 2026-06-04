@@ -105,12 +105,18 @@ platform): see [docs/runbooks/minimum-deployment.md](./docs/runbooks/minimum-dep
 - **Not verified end-to-end in a live cluster:** the kind smoke-test from
   [docs/runbooks/minimum-deployment.md](./docs/runbooks/minimum-deployment.md)
   is documented but not executed in this pass (no docker/kind in the dev
-  environment used to author this code). Smoke test before tagging
-  `v0.2.0` on `main`.
-- **Skeleton reconcilers:** child controllers correctly render Deployments
-  / Services / ConfigMaps / PVCs / HPAs / NATS StatefulSet, but advanced
-  ordering, upgrade choreography, and conditions are stubbed. Treat the
-  operator as v0.2.0 scaffold-grade.
+  environment used to author this code). The v0.4 kind integration smoke
+  (`make test-e2e`, `test/e2e/`, `.github/workflows/e2e.yml`) is authored
+  and compiles (`go vet -tags e2e ./test/...`) but is **build-only here** —
+  it requires kind/docker and runs in CI or on a kind-capable host.
+- **Status conditions are wired (v0.4, #34):** every component reconciler
+  now reads its rendered Deployment/StatefulSet/DaemonSet readiness and sets
+  `Available`/`Ready` conditions via `meta.SetStatusCondition`
+  (`metav1.Condition`); the umbrella `ZelosPlatform` reconciler rolls these
+  up into per-component `*Available` conditions plus a top-level
+  `Available`/`Ready` condition and a human `.status.phase`. Reconcile
+  cadence is 30s (override via `ZELOS_RECONCILE_INTERVAL`). Advanced
+  ordering + upgrade choreography are still stubbed.
 - **No `release.yml`:** the suite-wide multi-arch container build workflow
   ([docs/template/release.yml.tmpl](./docs/template/release.yml.tmpl)) is
   not wired up in `.github/workflows/` yet. `make image` / `make push`

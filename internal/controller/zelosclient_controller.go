@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,8 +39,16 @@ func (r *ZelosClientReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	// Off-cluster default: nothing for the operator to do.
+	// Off-cluster default: nothing for the operator to do. Report Available so
+	// the umbrella's roll-up doesn't treat an externally-managed client as a
+	// failure.
 	if !cl.Spec.InCluster {
+		applyWorkloadConditions(&cl.Status.CommonStatus, cl.Generation, workloadReadiness{
+			Found:     true,
+			Available: true,
+			Reason:    ReasonWorkloadAvailable,
+			Message:   "Off-cluster client (managed by Ansible/zelos.dgx)",
+		})
 		cl.Status.ObservedGeneration = cl.Generation
 		_ = r.Status().Update(ctx, &cl)
 		return ctrl.Result{}, nil
@@ -74,8 +83,13 @@ func (r *ZelosClientReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	wr := daemonSetReadiness(ctx, r.Client, types.NamespacedName{Name: ds.Name, Namespace: ds.Namespace})
+	applyWorkloadConditions(&cl.Status.CommonStatus, cl.Generation, wr)
 	cl.Status.ObservedGeneration = cl.Generation
 	_ = r.Status().Update(ctx, &cl)
+	if !wr.Available {
+		return ctrl.Result{RequeueAfter: componentRequeueInterval()}, nil
+	}
 	return ctrl.Result{}, nil
 }
 

@@ -3,6 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -41,3 +43,21 @@ func applyObject(ctx context.Context, c client.Client, scheme *runtime.Scheme, o
 
 // requeueResult is the default short requeue for transient errors.
 func requeueResult() (ctrl.Result, error) { return ctrl.Result{Requeue: true}, nil }
+
+// defaultReconcileInterval is the EA poll cadence used to re-evaluate managed
+// workload readiness so status conditions track Deployment/StatefulSet health
+// even without a watch event. Tunable via ZELOS_RECONCILE_INTERVAL (a Go
+// duration string, e.g. "15s"). See issue #34.
+const defaultReconcileInterval = 30 * time.Second
+
+// componentRequeueInterval returns the readiness re-evaluation cadence,
+// honoring the ZELOS_RECONCILE_INTERVAL env override when it parses to a
+// positive duration.
+func componentRequeueInterval() time.Duration {
+	if v := os.Getenv("ZELOS_RECONCILE_INTERVAL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			return d
+		}
+	}
+	return defaultReconcileInterval
+}

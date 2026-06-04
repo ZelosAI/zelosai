@@ -1,0 +1,52 @@
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosPlatform
+metadata:
+  name: default
+  namespace: zelos
+spec:
+  imagePullSecret: ghcr-pull-secret
+  # Every component image is pinned to the locally-built e2e readiness stub
+  # (test/e2e/stub) with pullPolicy: Never so the kind cluster never needs GHCR
+  # credentials. The stub serves 200 on /healthz + /readyz on both 8000 and
+  # 8080, so the operator's hard-coded probes pass and pods reach Ready, which
+  # drives the operator's status roll-up to Ready (the #34 feature under test).
+  defaults:
+    image:
+      repository: zelos.local/e2e-stub
+      tag: latest
+      pullPolicy: Never
+  telemetry:
+    # Use an external (unreachable) endpoint so the operator does NOT deploy the
+    # real OTel collector image (otel/opentelemetry-collector-contrib, which the
+    # stub can't replace). This keeps the "operator" component out of the
+    # readiness roll-up while still injecting OTEL_* env into the stubs.
+    enabled: true
+    externalEndpoint: "otel-disabled.zelos.svc:4317"
+    logLevel: info
+  gateway:
+    enabled: true
+    replicas: 1
+    image:
+      repository: zelos.local/e2e-stub
+      tag: latest
+      pullPolicy: Never
+  backplane:
+    enabled: true
+    substrate: nats
+    persistence:
+      enabled: false
+  mcp:
+    enabled: true
+    replicas: 1
+    persistence:
+      enabled: false
+    image:
+      repository: zelos.local/e2e-stub
+      tag: latest
+      pullPolicy: Never
+  broker:
+    enabled: false
+  server:
+    enabled: false
+  client:
+    enabled: false
