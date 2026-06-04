@@ -1,0 +1,43 @@
+# full: multi-node, HA-flavored sizing on a real cluster.
+#
+# - Gateway stays at 2 replicas + the minimum HPA (stateless, HA-flavored).
+# - NATS StatefulSet stays single-replica (StatefulSet HA is v1.0 work) but its
+#   PVC is pinned to a NETWORK-BACKED StorageClass so it is not nailed to one
+#   node and survives node loss (14-deployment-strategies.md → PVC expectations).
+# - A real CSI StorageClass is pinned EXPLICITLY on every PVC (no local-path).
+#   Default `ceph-block`; swap `storageClassName` for your cluster's SC
+#   (ebs-sc, csi-cinder, longhorn, …). See README.md.
+# - client.enabled stays FALSE: the DGX fleet runs host-side `zelosclient`
+#   processes (zelos.dgx), never cluster workloads → no in-cluster GPU,
+#   no NVIDIA device-plugin (contrast `solo`).
+#
+# NOTE on affinity: the `PlatformComponent` knob bag does not surface
+# affinity / topologySpreadConstraints / nodeSelector, and the platform
+# controller does not pass them to child CRs, so pod anti-affinity to SPREAD the
+# 2 gateway replicas across nodes CANNOT be set through this CR on v0.2.0. The
+# README documents the recommended constraint + the operator follow-up.
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosPlatform
+metadata:
+  name: default
+  namespace: zelos
+spec:
+  gateway:
+    replicas: 2
+    autoscaling:
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilization: 70
+  backplane:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClassName: ceph-block
+  mcp:
+    replicas: 1
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClassName: ceph-block
+  client:
+    enabled: false
