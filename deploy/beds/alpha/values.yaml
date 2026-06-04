@@ -1,0 +1,39 @@
+# Alpha bed (zelosproxmox / 192.168.1.220) overrides for the zelos-suite chart.
+# Pull suite images from the in-cluster Harbor at the rolling :develop tag; Argo CD
+# Image Updater pins each to a digest (see the zelos-suite Argo CD Application).
+#
+#   helm template zelos-suite ../../charts/zelos-suite -f values.yaml
+#   (Argo CD: source = deploy/charts/zelos-suite, valueFiles = deploy/beds/alpha/values.yaml)
+
+imagePullSecret: harbor-pull
+
+gateway:
+  image:
+    repository: harbor-core.harbor.svc.cluster.local/zelos/zelosgateway
+    tag: develop
+
+backplane:
+  image:
+    repository: harbor-core.harbor.svc.cluster.local/zelos/zelosbackplane
+    tag: develop
+
+mcp:
+  image:
+    repository: harbor-core.harbor.svc.cluster.local/zelos/zelosmcp
+    tag: develop
+
+# Enable the broker on alpha so the sync path (broker#11) dogfoods end-to-end.
+broker:
+  enabled: true
+  image:
+    repository: harbor-core.harbor.svc.cluster.local/zelos/zelosbroker
+    tag: develop
+
+# zelosserver MVP is v0.4 (scope TBD) — keep off until #20 lands.
+server:
+  enabled: false
+
+# Inference (zelosclient) runs host-resident on the GPU inference LXC node
+# (A6000 + vLLM/Qwen), subscribed to the bed NATS — NOT an in-cluster workload.
+client:
+  enabled: false
