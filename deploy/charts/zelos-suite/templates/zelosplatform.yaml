@@ -1,0 +1,71 @@
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosPlatform
+metadata:
+  name: {{ .Values.platformName }}
+  namespace: {{ .Values.namespace }}
+spec:
+  imagePullSecret: {{ .Values.imagePullSecret }}
+  defaults:
+    image:
+      pullPolicy: {{ .Values.pullPolicy }}
+  telemetry:
+    enabled: {{ .Values.telemetry.enabled }}
+    logLevel: {{ .Values.telemetry.logLevel }}
+  gateway:
+    enabled: {{ .Values.gateway.enabled }}
+    {{- if .Values.gateway.enabled }}
+    replicas: {{ .Values.gateway.replicas }}
+    image:
+      repository: {{ .Values.gateway.image.repository | quote }}
+      tag: {{ .Values.gateway.image.tag | quote }}
+    {{- with .Values.gateway.autoscaling }}
+    autoscaling:
+      minReplicas: {{ .minReplicas }}
+      maxReplicas: {{ .maxReplicas }}
+      targetCPUUtilization: {{ .targetCPUUtilization }}
+    {{- end }}
+    {{- end }}
+  backplane:
+    enabled: {{ .Values.backplane.enabled }}
+    {{- if .Values.backplane.enabled }}
+    substrate: {{ .Values.backplane.substrate }}
+    image:
+      repository: {{ .Values.backplane.image.repository | quote }}
+      tag: {{ .Values.backplane.image.tag | quote }}
+    {{- with .Values.backplane.persistence }}
+    persistence:
+      enabled: {{ .enabled }}
+      size: {{ .size | quote }}
+    {{- end }}
+    {{- end }}
+  mcp:
+    enabled: {{ .Values.mcp.enabled }}
+    {{- if .Values.mcp.enabled }}
+    replicas: {{ .Values.mcp.replicas }}
+    image:
+      repository: {{ .Values.mcp.image.repository | quote }}
+      tag: {{ .Values.mcp.image.tag | quote }}
+    {{- with .Values.mcp.persistence }}
+    persistence:
+      enabled: {{ .enabled }}
+      size: {{ .size | quote }}
+    {{- end }}
+    authProviderSecretRef: {{ .Values.mcp.authProviderSecretRef }}
+    mcpServersConfigMapRef: {{ .Values.mcp.mcpServersConfigMapRef }}
+    {{- end }}
+  broker:
+    enabled: {{ .Values.broker.enabled }}
+    {{- if .Values.broker.enabled }}
+    image:
+      repository: {{ .Values.broker.image.repository | quote }}
+      tag: {{ .Values.broker.image.tag | quote }}
+    {{- end }}
+  server:
+    enabled: {{ .Values.server.enabled }}
+    {{- if .Values.server.enabled }}
+    image:
+      repository: {{ .Values.server.image.repository | quote }}
+      tag: {{ .Values.server.image.tag | quote }}
+    {{- end }}
+  client:
+    enabled: {{ .Values.client.enabled }}
