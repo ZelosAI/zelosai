@@ -1,4 +1,4 @@
-# 12 — Ansible Collection Conventions
+# 15 — Ansible Collection Conventions
 
 Canonical standard for **all `zelos.*` Ansible collections** — `zelos.dgx`, `zelos.proxmox`,
 `zelos.kubernetes`, `zelos.foundry`. New collections are built to this doc; existing ones
