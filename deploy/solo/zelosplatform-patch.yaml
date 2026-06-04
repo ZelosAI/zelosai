@@ -1,0 +1,36 @@
+# solo: single-DGX, all-in-cluster sizing.
+#
+# - Every stateless service runs a single replica (one box, no HA).
+# - The minimum overlay's gateway HPA is removed ($patch: delete) — autoscaling
+#   on a single node only churns the one node's CPU.
+# - The zelosclient runs IN-CLUSTER (client.inCluster=true) as a DaemonSet on the
+#   DGX GPU node, pointed at a local vLLM runtime. This is the ONLY topology where
+#   the client is a cluster workload (see 14-deployment-strategies.md).
+# - StorageClass is left unset → k3s `local-path` default (correct for solo).
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosPlatform
+metadata:
+  name: default
+  namespace: zelos
+spec:
+  gateway:
+    replicas: 1
+    autoscaling:
+      $patch: delete
+  backplane:
+    persistence:
+      enabled: true
+      size: 5Gi
+  mcp:
+    replicas: 1
+  # In-cluster inference worker on the DGX. The NVIDIA device-plugin DaemonSet
+  # (nvidia-device-plugin.yaml) advertises nvidia.com/gpu on the node so this
+  # client Pod schedules onto the GPU. The client talks to a vLLM server running
+  # on the same DGX (host network or in-cluster) at runtimeURL.
+  client:
+    enabled: true
+    inCluster: true
+    runtime: vllm
+    runtimeURL: http://localhost:8000
+    subscribeTopics:
+    - zelos.infer.>

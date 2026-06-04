@@ -1,0 +1,56 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# `observability` overlay — OPT-IN downstream telemetry stack.
+#
+# The minimum deployment runs `zelos-otel-collector` with a `debug` exporter
+# (logs land in the collector Pod and stop there — see 11-telemetry.md). This
+# overlay provides the RECOMMENDED DOWNSTREAM target + dashboards; it does NOT
+# re-implement the operator's collector.
+#
+# It ships:
+#   * a standalone "downstream" OTel collector (Deployment + Service + config)
+#     that forwards logs → Loki, metrics → Prometheus (remote-write), traces →
+#     Tempo (OTLP). Workloads reach it by pointing the platform's
+#     telemetry.externalEndpoint at it (see README) — the operator then skips its
+#     own debug collector and sends straight here.
+#   * 3 Grafana dashboards as sidecar-discoverable ConfigMaps.
+#
+# This is NOT part of any EA bundle by default; the bundle adds it as a flagged
+# optional layer. Apply alongside deploy/minimum/ (or solo/split/full):
+#   kubectl apply -k deploy/observability/
+# then set spec.telemetry.externalEndpoint (see README.md).
+#
+# Loki / Prometheus / Tempo / Grafana themselves are NOT installed here
+# (commodity, install via their own charts) — this wires the Zelos side to them.
+
+namespace: zelos
+
+resources:
+- downstream-collector.yaml
+
+configMapGenerator:
+- name: zelos-grafana-dashboard-platform-health
+  files:
+  - dashboards/platform-health.json
+  options:
+    labels:
+      grafana_dashboard: "1"
+      app.kubernetes.io/part-of: zelos
+- name: zelos-grafana-dashboard-async-path-latency
+  files:
+  - dashboards/async-path-latency.json
+  options:
+    labels:
+      grafana_dashboard: "1"
+      app.kubernetes.io/part-of: zelos
+- name: zelos-grafana-dashboard-inference-throughput
+  files:
+  - dashboards/inference-throughput.json
+  options:
+    labels:
+      grafana_dashboard: "1"
+      app.kubernetes.io/part-of: zelos
+
+generatorOptions:
+  disableNameSuffixHash: true

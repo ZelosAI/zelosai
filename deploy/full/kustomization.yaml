@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# `full` deployment overlay — production-shape install for teams: a multi-node
+# Kubernetes control plane (≥ control-plane + worker nodes) behind a real Ingress
+# controller and a network-backed StorageClass, with one or more SEPARATE DGX
+# hosts running host-side `zelosclient` processes (provisioned by zelos.dgx, NOT
+# in the cluster). See docs/architecture/14-deployment-strategies.md.
+#
+# HA-FLAVORED, not HA (HA is v1.0): stateless services run 2 replicas; the NATS
+# StatefulSet stays single-replica on a network SC so it survives node loss.
+#
+# Layers on deploy/minimum/ and:
+#   * pins a real CSI StorageClass on the backplane/mcp PVCs (no local-path),
+#   * keeps gateway at 2 replicas + HPA, mcp at 1,
+#   * exposes the gateway via an Ingress (class nginx by default, swappable),
+#   * exposes NATS via a LoadBalancer for the DGX inference fleet to dial in,
+#   * adds a NetworkPolicy admitting only gateway-originated traffic to
+#     mcp/backplane (recommended in `full`, per 12-auth.md).
+#
+# Apply AFTER `kubectl apply -k deploy/operator/`. See README.md for prerequisites
+# and the affinity/topology follow-up (operator knob-bag limitation).
+
+resources:
+- ../minimum
+- gateway-ingress.yaml
+- backplane-nats-lb.yaml
+- networkpolicy.yaml
+
+patches:
+- path: zelosplatform-patch.yaml
+  target:
+    group: zelos.zelosai.io
+    version: v1alpha1
+    kind: ZelosPlatform
+    name: default

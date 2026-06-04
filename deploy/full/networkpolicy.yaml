@@ -1,0 +1,67 @@
+# full NetworkPolicy — enforce the trust boundary from 12-auth.md.
+#
+# The gateway is the only authenticated front door; mcp and backplane MUST NOT be
+# reachable except from gateway-originated traffic (recommended in `full`,
+# optional in solo/split — 14-deployment-strategies.md → Ingress/egress).
+#
+# REQUIRES a CNI that enforces NetworkPolicy (Calico, Cilium, …). k3s' default
+# flannel does NOT enforce it — which is one reason this policy is `full`-only.
+#
+# Two policies:
+#   1. mcp: ingress only from gateway Pods, on the mcp HTTP port (8000).
+#   2. backplane (NATS): ingress from gateway Pods (in-cluster async path) AND
+#      from outside the cluster on 4222 — the DGX fleet dials in via the
+#      LoadBalancer (backplane-nats-lb.yaml), which arrives without a Pod source,
+#      so the client port is left open at the policy layer and scoped instead by
+#      the LB's loadBalancerSourceRanges + NATS auth. The monitoring port (8222)
+#      is NOT admitted from outside.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zelos-mcp-allow-gateway
+  namespace: zelos
+  labels:
+    app.kubernetes.io/part-of: zelos
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zelosmcp
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: zelosgateway
+    ports:
+    - protocol: TCP
+      port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zelos-backplane-nats-ingress
+  namespace: zelos
+  labels:
+    app.kubernetes.io/part-of: zelos
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+  policyTypes:
+  - Ingress
+  ingress:
+  # In-cluster async path: gateway → NATS client port.
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: zelosgateway
+    ports:
+    - protocol: TCP
+      port: 4222
+  # DGX fleet dials in via the LoadBalancer (no Pod source). Scoped by the LB's
+  # loadBalancerSourceRanges + NATS auth, not by this policy.
+  - ports:
+    - protocol: TCP
+      port: 4222

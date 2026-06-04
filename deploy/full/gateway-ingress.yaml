@@ -1,0 +1,38 @@
+# full ingress — the cluster's authenticated front door for the gateway.
+#
+# Fronts the operator-rendered gateway Service `zelosgateway-default` (ClusterIP,
+# port 8000). Class `nginx` by default (most common); swap `ingressClassName`
+# (and the cert-manager annotation) for traefik / aws-alb / etc. — see README.md.
+#
+# TLS is required for a public `full` Ingress (14-deployment-strategies.md):
+# cert-manager issues the cert into the referenced Secret. Replace the host with
+# your real DNS name. The gateway stays the ONLY exposed control-plane component
+# (12-auth.md); mcp / backplane / broker are never exposed through Ingress.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zelosgateway
+  namespace: zelos
+  labels:
+    app.kubernetes.io/name: zelosgateway
+    app.kubernetes.io/part-of: zelos
+  annotations:
+    # cert-manager ClusterIssuer — swap for your issuer (or drop for BYO TLS).
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - zelos.example.com
+    secretName: zelosgateway-tls
+  rules:
+  - host: zelos.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zelosgateway-default
+            port:
+              number: 8000

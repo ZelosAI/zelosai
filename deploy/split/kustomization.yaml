@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# `split` deployment overlay — laptop / workstation running k3s as the control
+# plane, with the DGX a REMOTE inference host that runs `zelosclient` directly as
+# a host process (provisioned by the zelos.dgx Ansible collection), NOT in the
+# cluster. See docs/architecture/14-deployment-strategies.md.
+#
+# Layers on deploy/minimum/ and:
+#   * keeps the in-cluster zelosclient DISABLED (it lives on the DGX),
+#   * sizes everything single-node (the laptop has no HA and no GPU),
+#   * exposes the backplane's NATS on a NodePort so the remote DGX-side client can
+#     DIAL IN across the network (the cluster never dials out — see 01-async-path.md).
+#
+# No public ingress: the gateway + broker are reached over localhost / loopback on
+# the laptop (kubectl port-forward or the NodePorts the IDE points at). The one
+# cross-network surface is the inbound NATS NodePort — lock it to the DGX's address
+# (WireGuard recommended, see README).
+#
+# Apply AFTER `kubectl apply -k deploy/operator/`. See README.md.
+
+resources:
+- ../minimum
+- backplane-nats-nodeport.yaml
+
+patches:
+- path: zelosplatform-patch.yaml
+  target:
+    group: zelos.zelosai.io
+    version: v1alpha1
+    kind: ZelosPlatform
+    name: default
