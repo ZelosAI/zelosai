@@ -125,3 +125,4 @@ flowchart LR
 - [04-components/](./04-components/) — one page per component
 - [05-gitflow.md](./05-gitflow.md) — the suite-wide gitflow every repo follows
 - [06-naming-conventions.md](./06-naming-conventions.md) — repo / image / topic / tag names
+- [12-auth.md](./12-auth.md) — OIDC auth termination at the gateway + internal identity propagation
