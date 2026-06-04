@@ -78,3 +78,16 @@ func SelectorLabels(c Component, instance string) map[string]string {
 func FileEnvName(c Component, key string) string {
 	return fmt.Sprintf("%s_%s_FILE", c.EnvPrefix, strings.ToUpper(strings.ReplaceAll(key, "-", "_")))
 }
+
+// ImageRef composes a container image reference from a repository and a
+// tag-or-digest. A value that is a digest (e.g. "sha256:abc…", as written by
+// Argo CD Image Updater's digest update-strategy) is joined with "@"; an
+// ordinary tag is joined with ":". This lets GitOps pin a component's image by
+// digest through the ZelosPlatform CR's per-component image.tag field, so a
+// new develop build rolls the Deployment instead of leaving a floating tag.
+func ImageRef(repo, tagOrDigest string) string {
+	if strings.HasPrefix(tagOrDigest, "sha256:") {
+		return repo + "@" + tagOrDigest
+	}
+	return fmt.Sprintf("%s:%s", repo, tagOrDigest)
+}

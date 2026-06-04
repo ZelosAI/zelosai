@@ -131,7 +131,7 @@ func buildClientDaemonSet(cl *zelosv1alpha1.ZelosClient, c render.Component, cmN
 					Tolerations:        cl.Spec.Tolerations,
 					Containers: []corev1.Container{{
 						Name:    c.Name,
-						Image:   fmt.Sprintf("%s:%s", image, tag),
+						Image:   render.ImageRef(image, tag),
 						EnvFrom: envFrom,
 						Env: []corev1.EnvVar{
 							{Name: "OTEL_SERVICE_NAME", Value: c.Name},

@@ -155,7 +155,7 @@ func BuildCollectorDeployment(owner metav1.Object, spec zelosv1alpha1.TelemetryS
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:  "otel-collector",
-						Image: fmt.Sprintf("%s:%s", image, tag),
+						Image: ImageRef(image, tag),
 						Args:  []string{"--config=/etc/otelcol/config.yaml"},
 						Ports: []corev1.ContainerPort{
 							{Name: "otlp-grpc", ContainerPort: 4317, Protocol: corev1.ProtocolTCP},
