@@ -1,0 +1,96 @@
+---
+# ============================================================================
+# ci.yml — per-repo PR validation (Workflow name: ci).
+#
+# Drop into <repo>/.github/workflows/ci.yml. This file ships TWO flavors;
+# KEEP EXACTLY ONE (delete the other) when you apply it to a repo, picked by
+# the repo's language:
+#
+#   * GO flavor     — setup-go + go vet + go test -race -cover + golangci-lint.
+#   * PYTHON flavor — setup-python + ruff check + pytest -q --cov.
+#
+# Both flavors:
+#   * trigger on pull_request into develop and main (PR validation only;
+#     direct-push builds belong to lint.yml / release.yml);
+#   * cancel superseded runs via a per-ref concurrency group;
+#   * run a single OS / single language version (NO matrix for EA);
+#   * collect coverage but DO NOT enforce a threshold for EA.
+#
+# This template is plain copy-paste YAML — it has no substitution tokens, so it
+# renders verbatim with no unfilled placeholders. The only edit is choosing the
+# flavor. Companion: lint.yml.go.tmpl / lint.yml.python.tmpl (push-branch lint).
+#
+# Mixed Go+Python repos (none today) would compose BOTH jobs in one workflow;
+# there is no third flavor — see docs/template/README.md.
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# GO FLAVOR  — keep this block for Go repos; delete the PYTHON FLAVOR below.
+# ----------------------------------------------------------------------------
+name: ci
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: go vet
+        run: go vet ./...
+      - name: go test (race + cover)
+        run: go test -race -cover ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+# ----------------------------------------------------------------------------
+# PYTHON FLAVOR — keep this block for Python repos; delete the GO FLAVOR above.
+# Expects a pyproject.toml with python-version and a [project.optional-
+# dependencies] `dev` extra (ruff + pytest + pytest-cov), per
+# docs/template/pyproject.python.tmpl.
+# ----------------------------------------------------------------------------
+name: ci
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: pyproject.toml
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: ruff check
+        run: ruff check .
+      - name: pytest (cover)
+        run: pytest -q --cov

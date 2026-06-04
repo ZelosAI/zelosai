@@ -59,7 +59,7 @@ flowchart TB
 | **zelosbackplane** | [ZelosAI/zelosbackplane](https://github.com/ZelosAI/zelosbackplane) | Go | Message bus / event stream. The async fabric: clients pick up requests, run inference, publish responses. NATS first; substrate kept swappable. | Scaffold |
 | **zelosclient** | [ZelosAI/zelosclient](https://github.com/ZelosAI/zelosclient) | Go | Single long-running container that runs **on a provisioned host (not in Kubernetes)**, subscribes to backplane topics, bridges to a local vLLM / Ollama runtime, publishes responses. | Scaffold |
 | **zelosbroker** | [ZelosAI/zelosbroker](https://github.com/ZelosAI/zelosbroker) | Go | Asset broker + secure-tunnel endpoint. Pulls customer workspace assets so LLM hosts have the context they need, AND opens a secure tunnel for the sync IDE↔LLM path. The sync-path counterpart to zelosbackplane. | Scaffold |
-| **zelosserver** | [ZelosAI/zelosserver](https://github.com/ZelosAI/zelosserver) | Python | Scope undecided — candidate roles are UI, monitoring dashboards, document/config store. Slot held to prevent later naming churn. | TBD |
+| **zelosserver** | [ZelosAI/zelosserver](https://github.com/ZelosAI/zelosserver) | Python | Operator-facing **UI portal + config-store API** (dual-purpose): surfaces suite state and stores IDE assets / rules / agents / hooks. Not a monitoring backend. Scope pinned in [13-zelosserver-scope.md](./13-zelosserver-scope.md). | MVP (v0.4) |
 | **zelos.dgx** | [kmechlin/ansible-dgx-collection](https://github.com/kmechlin/ansible-dgx-collection) | Ansible | Ansible collection that provisions an NVIDIA DGX-class host AND delivers a `zelosclient` container onto it. First of N future `zelos.<hosttype>` collections. | v0.1.0, not yet hw-validated |
 
 The four async-path / sync-path daemons (`zelosgateway`, `zelosbackplane`,
@@ -126,3 +126,6 @@ flowchart LR
 - [05-gitflow.md](./05-gitflow.md) — the suite-wide gitflow every repo follows
 - [06-naming-conventions.md](./06-naming-conventions.md) — repo / image / topic / tag names
 - [12-auth.md](./12-auth.md) — OIDC auth termination at the gateway + internal identity propagation
+- [13-zelosserver-scope.md](./13-zelosserver-scope.md) — zelosserver's pinned role (UI portal + config-store API)
+- [14-deployment-strategies.md](./14-deployment-strategies.md) — the solo / split / full EA topologies
+- [15-ansible-collection-conventions.md](./15-ansible-collection-conventions.md) — conventions for all `zelos.*` Ansible collections
