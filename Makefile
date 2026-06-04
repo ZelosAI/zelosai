@@ -7,6 +7,15 @@ CONTROLLER_GEN ?= $(GOPATH)/bin/controller-gen
 KUSTOMIZE ?= $(GOPATH)/bin/kustomize
 GOPATH ?= $(HOME)/go
 
+# --- e2e (kind) smoke knobs --------------------------------------------------
+KIND ?= kind
+KUBECTL ?= kubectl
+KIND_CLUSTER ?= zelosai-e2e
+E2E_OPERATOR_IMG ?= zelos.local/zelosai:e2e
+E2E_STUB_IMG ?= zelos.local/e2e-stub:latest
+E2E_READY_TIMEOUT ?= 8m
+E2E_GO_TIMEOUT ?= 12m
+
 .PHONY: all
 all: build
 
@@ -69,3 +78,37 @@ push:
 .PHONY: bundle
 bundle: manifests
 	$(KUSTOMIZE) build deploy/operator > deploy/operator/bundle.yaml
+
+# --- e2e (kind) smoke --------------------------------------------------------
+# NOTE: requires kind + docker + kubectl on the host. This is NOT runnable in
+# the dev sandbox (no kind there); it runs in CI (.github/workflows/e2e.yml) or
+# on a kind-capable host. The Go assertions live in test/e2e (build tag `e2e`).
+
+.PHONY: e2e-images
+e2e-images: ## Build the operator + e2e readiness-stub images locally.
+	docker build -t $(E2E_OPERATOR_IMG) .
+	docker build -t $(E2E_STUB_IMG) -f test/e2e/stub/Dockerfile .
+
+.PHONY: kind-up
+kind-up: ## Create the kind cluster (idempotent).
+	$(KIND) get clusters | grep -qx $(KIND_CLUSTER) || $(KIND) create cluster --name $(KIND_CLUSTER) --wait 120s
+
+.PHONY: kind-down
+kind-down: ## Delete the kind cluster.
+	$(KIND) delete cluster --name $(KIND_CLUSTER)
+
+.PHONY: e2e-deploy
+e2e-deploy: e2e-images kind-up ## Load images + install operator + e2e overlay into kind.
+	$(KIND) load docker-image $(E2E_OPERATOR_IMG) --name $(KIND_CLUSTER)
+	$(KIND) load docker-image $(E2E_STUB_IMG) --name $(KIND_CLUSTER)
+	$(KUSTOMIZE) build deploy/operator | sed 's#ghcr.io/zelosai/zelosai:develop#$(E2E_OPERATOR_IMG)#g' | $(KUBECTL) apply -f -
+	$(KUBECTL) -n zelos-system rollout status deploy/zelosai-controller-manager --timeout=180s
+	$(KUSTOMIZE) build deploy/e2e | sed 's#zelos.local/e2e-stub:latest#$(E2E_STUB_IMG)#g' | $(KUBECTL) apply -f -
+
+.PHONY: test-e2e
+test-e2e: e2e-deploy ## Full kind smoke: bring up, install, assert ZelosPlatform Ready.
+	E2E_READY_TIMEOUT=$(E2E_READY_TIMEOUT) go test -tags e2e ./test/e2e/... -count=1 -timeout $(E2E_GO_TIMEOUT) -v
+
+.PHONY: vet-e2e
+vet-e2e: ## Type-check the e2e harness without a cluster (sandbox-safe).
+	go vet -tags e2e ./test/...

@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# e2e smoke overlay for the kind-based integration test (test/e2e).
+#
+# Apply *after* `kubectl apply -k deploy/operator/` has installed the CRDs +
+# operator. Unlike deploy/minimum/, this overlay is fully self-contained
+# (throwaway placeholder Secrets, all component images pinned to the local e2e
+# readiness stub with pullPolicy: Never) so it installs on a fresh kind cluster
+# with no registry credentials. The assertion harness lives in
+# test/e2e/e2e_test.go and the whole flow is driven by `make test-e2e`.
+
+namespace: zelos
+
+resources:
+- namespace.yaml
+- secrets.yaml
+- zelosplatform.yaml

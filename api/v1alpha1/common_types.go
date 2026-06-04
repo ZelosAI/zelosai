@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ImageSpec describes a container image to pull. Repository defaults to
@@ -173,16 +174,14 @@ type CommonStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// Conditions captures Ready, Progressing, Degraded.
+	// Conditions captures the standard Kubernetes-convention conditions
+	// (Available, Ready, Progressing) for the resource. Managed via
+	// meta.SetStatusCondition so transition times and observedGeneration
+	// follow the upstream apimachinery semantics.
 	// +optional
-	Conditions []Condition `json:"conditions,omitempty"`
-}
-
-// Condition mirrors metav1.Condition with a smaller surface so CRD validation stays light.
-type Condition struct {
-	Type               string `json:"type"`
-	Status             string `json:"status"`
-	Reason             string `json:"reason,omitempty"`
-	Message            string `json:"message,omitempty"`
-	LastTransitionTime string `json:"lastTransitionTime,omitempty"`
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }

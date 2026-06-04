@@ -1,0 +1,96 @@
+---
+# kind-based end-to-end smoke for the zelosai operator (issue #35).
+#
+# Spins up a kind cluster, builds + loads the operator and a tiny readiness-stub
+# image, installs the CRDs + operator + the self-contained `deploy/e2e` overlay,
+# then asserts that ZelosPlatform/default reaches Ready=True with a populated
+# .status.conditions block within ~8 minutes (the #34 status feature).
+#
+# The component images are the local readiness stub (pullPolicy: Never), so the
+# cluster needs no GHCR credentials. NATS uses the public nats:2.10-alpine image
+# and kind's built-in local-path storage class for its PVC.
+#
+# Runtime budget: 8 minutes for the platform to go Ready (E2E_READY_TIMEOUT),
+# inside a 12-minute Go test timeout; the job itself caps at 20 minutes.
+name: e2e
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [develop]
+  push:
+    branches: [develop, main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  kind-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build operator + e2e stub images
+        run: |
+          docker build -t zelos.local/zelosai:e2e .
+          docker build -t zelos.local/e2e-stub:latest -f test/e2e/stub/Dockerfile .
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: zelosai-e2e
+          wait: 120s
+
+      - name: Load images into kind
+        run: |
+          kind load docker-image zelos.local/zelosai:e2e --name zelosai-e2e
+          kind load docker-image zelos.local/e2e-stub:latest --name zelosai-e2e
+
+      - name: Install kustomize
+        run: |
+          go install sigs.k8s.io/kustomize/kustomize/v5@v5.4.3
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install operator (CRDs + RBAC + manager)
+        run: |
+          kustomize build deploy/operator \
+            | sed 's#ghcr.io/zelosai/zelosai:develop#zelos.local/zelosai:e2e#g' \
+            | kubectl apply -f -
+          kubectl -n zelos-system rollout status deploy/zelosai-controller-manager --timeout=180s
+
+      - name: Apply e2e ZelosPlatform overlay
+        run: |
+          kustomize build deploy/e2e | kubectl apply -f -
+
+      - name: Assert ZelosPlatform reaches Ready
+        env:
+          E2E_READY_TIMEOUT: 8m
+        run: |
+          go test -tags e2e ./test/e2e/... -count=1 -timeout 12m -v
+
+      - name: Dump cluster state on failure
+        if: failure()
+        run: |
+          echo "::group::ZelosPlatform status"
+          kubectl -n zelos get zelosplatform default -o yaml || true
+          echo "::endgroup::"
+          echo "::group::child CRs"
+          kubectl -n zelos get zelosgateway,zelosbackplane,zelosmcp -o yaml || true
+          echo "::endgroup::"
+          echo "::group::pods + events"
+          kubectl -n zelos get pods -o wide || true
+          kubectl -n zelos get events --sort-by=.lastTimestamp || true
+          echo "::endgroup::"
+          echo "::group::operator logs"
+          kubectl -n zelos-system logs deploy/zelosai-controller-manager --tail=200 || true
+          echo "::endgroup::"
