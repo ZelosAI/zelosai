@@ -49,7 +49,8 @@ flowchart LR
 | **WireGuard** (optional traffic wrap) | ZelosBroker, ZelosClient | Kernel WG (mainline since 5.6) + `wireguard-tools` userspace. zelos.dgx Ansible can install the userspace package. | `ZelosBroker.spec.wireGuard.enabled`, `ZelosClient.spec.wireGuard.enabled` |
 | **PVC storage class** | ZelosMCP, ZelosBroker, NATS | Cluster default (`storageClassName` unset) or override | `*.spec.persistence.storageClassName` |
 | **OAuth providers** (GitHub / Okta) | ZelosMCP, ZelosGateway, ZelosBroker | User-provided Secret keyed by `providers.json` | `*.spec.authProviderSecretRef` |
-| **TLS material** | Optional all | [cert-manager](https://cert-manager.io/) or user-managed Secret | `*.spec.tlsSecretRef` |
+| **TLS material** | Optional all | [cert-manager](https://cert-manager.io/) ClusterIssuer (self-signed / Let's Encrypt / Google Trust Services) or a user-managed Secret. See the `full` overlay examples + [runbook](../runbooks/full-deployment-with-tls-dns.md). | `*.spec.tlsSecretRef` |
+| **Public DNS** (optional) | ZelosGateway Ingress | Manual record, or [external-dns](https://kubernetes-sigs.github.io/external-dns/) → Google Cloud DNS (example in `deploy/full/`). | Ingress host / `external-dns` |
 | **GHCR pull secret** | All | `kubectl create secret docker-registry ghcr-pull-secret …`. See [10-image-registry.md](./10-image-registry.md). | `ZelosPlatform.spec.imagePullSecret` |
 | **vLLM / Ollama** | ZelosClient | Host-side via [`zelos.dgx`](../03-provisioning.md) Ansible. Not Kubernetes-deployed. | `ZelosClient.spec.runtimeURL` |
 | **VS Code (host)** | zelos-vscode extension | End-user IDE; extension installed via `.vsix` (Marketplace publish follows v0.2 of the extension). | n/a (not a CRD field) |
