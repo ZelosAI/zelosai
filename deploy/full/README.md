@@ -21,8 +21,12 @@ for the topology rationale.
   Longhorn, …). The overlay pins `ceph-block` by default — swap it (see below).
 - **An Ingress controller** — `nginx` by default (swap `ingressClassName`).
 - **cert-manager** with a `ClusterIssuer` for the gateway TLS cert (or supply
-  your own cert Secret and drop the annotation).
-- **External DNS** resolving your gateway hostname to the Ingress.
+  your own cert Secret and drop the annotation). Three ready-to-edit issuer
+  examples ship here — self-signed, Let's Encrypt, Google Trust Services —
+  see **[TLS & DNS](#tls--dns)** below.
+- **A DNS record** resolving your gateway hostname to the Ingress — manage it
+  by hand, or apply `external-dns.example.yaml` to create it automatically in
+  Google Cloud DNS.
 - **A CNI that enforces NetworkPolicy** (Calico / Cilium) for `networkpolicy.yaml`
   to take effect — flannel ignores it.
 - **One or more DGX hosts** provisioned **separately** via `zelos.dgx`, each
@@ -55,6 +59,37 @@ node.
 Edit `gateway-ingress.yaml`: change `ingressClassName` (e.g. `traefik`,
 `alb`) and the cert annotation to match your controller / issuer. The backend
 Service (`zelosgateway-default:8000`) is stable across controllers.
+
+## TLS & DNS
+
+The gateway Ingress terminates TLS with a cert-manager-issued Secret. Pick **one**
+`ClusterIssuer` — three example manifests ship here (each is an EXAMPLE, applied
+manually; none are part of the kustomization):
+
+| File | Issuer name | Trusted? | Notes |
+|---|---|---|---|
+| `issuer-self-signed.example.yaml` | `zelos-selfsigned-ca` | No (distribute the root CA) | dev / internal; zero external deps |
+| `issuer-letsencrypt.example.yaml` | `letsencrypt-prod` (+ `-staging`) | **Yes** | free; ACME DNS-01 on Google Cloud DNS (or HTTP-01) |
+| `issuer-google-trust-services.example.yaml` | `google-trust-services` | **Yes** | free; ACME + External Account Binding; DNS-01 on Cloud DNS |
+
+```bash
+# 1) install cert-manager (once)
+helm repo add jetstack https://charts.jetstack.io && helm repo update
+helm install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set crds.enabled=true
+# 2) edit + apply ONE issuer example (fill in email / project / EAB), e.g.:
+kubectl apply -f deploy/full/issuer-letsencrypt.example.yaml
+# 3) set its name in gateway-ingress.yaml -> cert-manager.io/cluster-issuer: <issuer>
+# 4) (optional) automatic DNS records in Google Cloud DNS:
+kubectl apply -f deploy/full/external-dns.example.yaml   # edit --google-project / --domain-filter
+```
+
+The public-CA issuers use the **DNS-01** challenge against **Google Cloud DNS**, which works for
+wildcards and clusters with no public inbound — it needs a delegated managed zone + a `dns.admin`
+service account (the same one external-dns reuses). Full walkthrough (incl. the Google Trust
+Services EAB flow):
+[docs/runbooks/full-deployment-with-tls-dns.md](../../docs/runbooks/full-deployment-with-tls-dns.md).
+The mechanism mirrors the Ansible-managed beds — see
+[zelos.kubernetes `docs/cluster-tls-and-dns.md`](https://github.com/ZelosAI/zelos.kubernetes/blob/develop/docs/cluster-tls-and-dns.md).
 
 ## Pod anti-affinity — recommended, but an operator gap on v0.2.0
 

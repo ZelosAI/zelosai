@@ -1,0 +1,98 @@
+# external-dns — automatic public DNS records in Google Cloud DNS for the gateway Ingress.
+#
+# Watches Ingress resources and creates/updates the matching A/TXT records in Cloud DNS, so the
+# gateway hostname (and any future host) resolves without manual record edits. Reuses the same
+# `dns.admin` service account as the cert-manager DNS-01 solver.
+#
+# Prereqs:
+#   * A public Google Cloud DNS managed zone delegated to your domain.
+#   * The dns.admin SA key Secret (same one the issuer examples use), but in THIS namespace:
+#       kubectl create namespace external-dns
+#       kubectl -n external-dns create secret generic clouddns-dns01-solver-svc-acct --from-file=key.json
+#
+# Apply: kubectl apply -f deploy/full/external-dns.example.yaml
+# Edit:  set --google-project, --domain-filter, --txt-owner-id below.
+# This file is an EXAMPLE — NOT part of the kustomization (apply it manually).
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-dns
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+  namespace: external-dns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-dns
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods", "nodes"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "watch", "list"]
+  # --- Istio sources alternative (if fronting with Istio instead of nginx Ingress) ---
+  # - apiGroups: ["networking.istio.io"]
+  #     resources: ["gateways", "virtualservices"]
+  #     verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-dns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-dns
+subjects:
+  - kind: ServiceAccount
+    name: external-dns
+    namespace: external-dns
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+  namespace: external-dns
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: external-dns
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: external-dns
+    spec:
+      serviceAccountName: external-dns
+      containers:
+        - name: external-dns
+          image: registry.k8s.io/external-dns/external-dns:v0.21.0
+          args:
+            - --source=ingress                     # add --source=service for LoadBalancer Services
+            - --provider=google
+            - --google-project=my-gcp-project      # <- your project
+            - --domain-filter=example.com          # <- your public zone (limits what it manages)
+            - --policy=upsert-only                 # never deletes records; use `sync` to GC
+            - --registry=txt
+            - --txt-owner-id=zelos-full            # ownership marker for THIS instance
+            - --txt-prefix=zelos-
+            # For a private gateway IP behind a public WAN IP, publish the WAN IP instead:
+            # - --default-targets=203.0.113.10
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /etc/secrets/gcp/key.json
+          volumeMounts:
+            - name: gcp-sa
+              mountPath: /etc/secrets/gcp
+              readOnly: true
+      volumes:
+        - name: gcp-sa
+          secret:
+            secretName: clouddns-dns01-solver-svc-acct

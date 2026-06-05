@@ -8,6 +8,14 @@
 # cert-manager issues the cert into the referenced Secret. Replace the host with
 # your real DNS name. The gateway stays the ONLY exposed control-plane component
 # (12-auth.md); mcp / backplane / broker are never exposed through Ingress.
+#
+# Pick a ClusterIssuer (apply ONE of the examples in this directory, then set its name in the
+# annotation below) — see README.md "TLS & DNS" + docs/runbooks/full-deployment-with-tls-dns.md:
+#   * issuer-self-signed.example.yaml          -> zelos-selfsigned-ca   (dev/internal, untrusted)
+#   * issuer-letsencrypt.example.yaml          -> letsencrypt-prod      (public, free)
+#   * issuer-google-trust-services.example.yaml-> google-trust-services (public, free, EAB)
+# Or drop the annotation entirely and provide your own cert in the `zelosgateway-tls` Secret.
+# Optionally apply external-dns.example.yaml to create the DNS record for the host below.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
