@@ -129,3 +129,4 @@ flowchart LR
 - [13-zelosserver-scope.md](./13-zelosserver-scope.md) — zelosserver's pinned role (UI portal + config-store API)
 - [14-deployment-strategies.md](./14-deployment-strategies.md) — the solo / split / full EA topologies
 - [15-ansible-collection-conventions.md](./15-ansible-collection-conventions.md) — conventions for all `zelos.*` Ansible collections
+- [16-dns-and-hostname-standard.md](./16-dns-and-hostname-standard.md) — the suite DNS / hostname standard (`<service>.<bed-or-cluster>.<product>.<domain>`), dual-cert + split-horizon TLS, and the unified `/oidc` + `/verify-auth` contract

@@ -173,6 +173,15 @@ cluster never dials out to the host — see
   over a LoadBalancer or NodePort scoped to the fleet's network. Egress mirrors
   the others (IdP, DGX runtime hosts).
 
+Publicly-exposed deployments follow the suite [DNS & hostname
+standard](./16-dns-and-hostname-standard.md): each exposed service gets its own
+host under `<bed>.<product>.<domain>` (e.g. `gateway.prod.zelosai.<domain>`)
+rather than a single shared host with path-based routing, covered by dual
+wildcard certs (public + `.local`) with split-horizon DNS, and the unified
+`<bed-domain>/oidc` + `/verify-auth` auth contract on the apex. An instance may
+also publish on an optional **non-standard public port** when `:443` is taken on
+its WAN IP — certs are port-agnostic, so the wildcard stays valid there.
+
 In every strategy, **the gateway is the only authenticated front door** and
 all control-plane components MUST NOT be exposed outside the cluster except
 through it — the trust boundary from [12-auth.md](./12-auth.md) holds verbatim.
@@ -272,3 +281,6 @@ cluster never schedules GPU Pods.
   host-resident worker that the topology is built around.
 - [04-components/zelos-vscode.md](./04-components/zelos-vscode.md) — the IDE
   client that connects in.
+- [16-dns-and-hostname-standard.md](./16-dns-and-hostname-standard.md) — the
+  host-based DNS standard, dual-cert + split-horizon TLS, and optional
+  non-standard public port that public deployments follow.

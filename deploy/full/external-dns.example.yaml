@@ -2,7 +2,8 @@
 #
 # Watches Ingress resources and creates/updates the matching A/TXT records in Cloud DNS, so the
 # gateway hostname (and any future host) resolves without manual record edits. Reuses the same
-# `dns.admin` service account as the cert-manager DNS-01 solver.
+# `dns.admin` service account as the cert-manager DNS-01 solver. Hostnames follow the suite DNS
+# standard <service>.<env>.<product>.<domain> — see docs/architecture/16-dns-and-hostname-standard.md.
 #
 # Prereqs:
 #   * A public Google Cloud DNS managed zone delegated to your domain.

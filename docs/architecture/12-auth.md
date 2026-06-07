@@ -64,6 +64,31 @@ path; it is not a hard dependency. The existing OAuth-provider inventory in
 (GitHub / Okta) describes the same bring-your-own-IdP posture from the
 dependency side.
 
+### Suite OIDC contract — `/oidc` + `/verify-auth` on the bed apex
+
+When a deployment adopts the suite [DNS & hostname
+standard](./16-dns-and-hostname-standard.md), auth rides the bed **apex** host
+so the IdP is drop-in interchangeable. The contract is fixed regardless of which
+IdP is deployed:
+
+| Endpoint | Value |
+|---|---|
+| **OIDC issuer** | `https://<bed-domain><:port>/oidc` |
+| **GitHub OAuth callback** | `https://<bed-domain><:port>/verify-auth` |
+| **SSO gate** | `auth.<bed-domain>` (oauth2-proxy; cookie scoped to `.<bed-domain>`) |
+
+**Dex** and **Rancher** are the two interchangeable in-cluster IdPs (mutually
+exclusive, chosen per instance) — Dex the light option, Rancher when its
+management UI is wanted. Because both answer the same `/oidc` issuer and
+`/verify-auth` callback, **one GitHub OAuth App per instance** serves whichever
+is deployed and clients never learn which IdP is in use. The platform resolves an
+`oidc_*` parity fact set (issuer URL, scopes, groups/admin claims) once from the
+chosen provider and threads it into every client, hiding Dex-vs-Rancher
+differences in scope and group handling. `zelos.bastion` follows the same
+`/oidc` + `/verify-auth` contract for its local Dex. See
+[16-dns-and-hostname-standard.md](./16-dns-and-hostname-standard.md#unified-oidc-contract-interchangeable-idp)
+for the full contract and the `oidc_*` table.
+
 ## Token format — OIDC ID + access JWT, RS256
 
 The gateway terminates the **OIDC authorization-code flow** (with PKCE for the
@@ -240,3 +265,6 @@ credentials in exactly one place: the user's IDE.
   secret is mounted (file, not env).
 - [09-dependencies.md](./09-dependencies.md) — external IdP / OAuth-provider
   dependency inventory.
+- [16-dns-and-hostname-standard.md](./16-dns-and-hostname-standard.md) — the
+  unified `<bed-domain>/oidc` + `/verify-auth` contract, interchangeable
+  Dex/Rancher IdPs, and the `oidc_*` parity layer.

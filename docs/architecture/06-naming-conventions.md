@@ -69,6 +69,31 @@ Kubernetes types.
 - Suite-wide vars use the prefix `ZELOSAI_*`: e.g. `ZELOSAI_SCHEMAS_VERSION`.
 - Sensitive values live in `.env` (gitignored) or a Secret. Commit only `.env.example`.
 
+## DNS & hostnames
+
+Every Zelos service is addressed as:
+
+```
+<service>.<bed-or-cluster>.<product>.<domain>
+```
+
+e.g. `harbor.alpha.foundry.zelosai.cloud` — *which service*, on *which
+instance* (a foundry **bed** or kube **cluster**/env), of *which product*
+(`foundry` / `zelosai` / `bastion`), under *which* registered `<domain>`.
+
+- **Single-service appliances** that aren't on a cluster (the `zelos.bastion`
+  break-glass VM) drop `<service>` → `<env>.<product>.<domain>`
+  (`prod.bastion.zelosai.cloud`).
+- Each instance also serves a `.local` LAN mirror of the same hierarchy
+  (`harbor.alpha.foundry.local`), covered by an internal-CA wildcard
+  alongside the public one.
+- Auth rides the bed **apex**: issuer `<bed-domain>/oidc`, GitHub callback
+  `<bed-domain>/verify-auth`, SSO gate `auth.<bed-domain>`.
+
+[16-dns-and-hostname-standard.md](./16-dns-and-hostname-standard.md) is the full
+reference (dual wildcard certs, split-horizon, optional non-standard public
+port, the interchangeable-IdP `oidc_*` parity layer).
+
 ## Branches
 
 Detailed in [05-gitflow.md](./05-gitflow.md). Short version:

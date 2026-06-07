@@ -47,7 +47,9 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-  # Replace with the DGX's resolvable hostname; host-less rules match any Host.
+  # Host-less by default (zero-DNS NodePort path). To add a name, use the suite DNS standard
+  # <service>.<env>.<product>.<domain> (docs/architecture/16-dns-and-hostname-standard.md),
+  # e.g. `host: gateway.solo.zelosai.<domain>`; host-less rules match any Host.
   - http:
       paths:
       - path: /
