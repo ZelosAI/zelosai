@@ -10,6 +10,11 @@ identical (see zelos.kubernetes
 [`docs/cluster-tls-and-dns.md`](https://github.com/ZelosAI/zelos.kubernetes/blob/develop/docs/cluster-tls-and-dns.md)
 and [`docs/google-trust-services-cert-manager.md`](https://github.com/ZelosAI/zelos.kubernetes/blob/develop/docs/google-trust-services-cert-manager.md)).
 
+Host names below follow the suite
+[DNS & hostname standard](../architecture/16-dns-and-hostname-standard.md): each exposed service
+gets its own host under `<bed-or-cluster>.<product>.<domain>` (the gateway shown here as
+`gateway.<cluster>.zelosai.<domain>`). Substitute your own values throughout.
+
 ## Prerequisites
 - A `full`-capable cluster + Ingress controller (see [deploy/full/README.md](../../deploy/full/README.md)).
 - `kubectl` admin access; `helm`; (for public CAs) `gcloud`.
@@ -71,7 +76,7 @@ Start on the test directory (commented in the example), then switch to productio
 ```bash
 $EDITOR deploy/full/gateway-ingress.yaml
 #   annotations: { cert-manager.io/cluster-issuer: letsencrypt-prod }   # your choice from step 2
-#   tls[].hosts / rules[].host: zelos.<your-domain>
+#   tls[].hosts / rules[].host: gateway.<cluster>.zelosai.<domain>      # per the DNS standard
 ```
 
 ## 4. (Optional) Automatic public DNS
@@ -96,11 +101,11 @@ kubectl -n zelos wait --for=condition=Ready pod --all --timeout=300s
 kubectl describe ingress -n zelos zelosgateway
 kubectl get certificate -A                 # READY=True for zelosgateway-tls
 kubectl get order,challenge -A             # ACME progress (empty once issued)
-openssl s_client -connect zelos.<your-domain>:443 -servername zelos.<your-domain> </dev/null 2>/dev/null \
+openssl s_client -connect gateway.<cluster>.zelosai.<domain>:443 -servername gateway.<cluster>.zelosai.<domain> </dev/null 2>/dev/null \
   | openssl x509 -noout -issuer
 # DNS:
 kubectl -n external-dns logs deploy/external-dns | tail
-dig +short zelos.<your-domain>
+dig +short gateway.<cluster>.zelosai.<domain>
 ```
 
 ## Troubleshooting

@@ -49,10 +49,11 @@ flowchart LR
 | **WireGuard** (optional traffic wrap) | ZelosBroker, ZelosClient | Kernel WG (mainline since 5.6) + `wireguard-tools` userspace. zelos.dgx Ansible can install the userspace package. | `ZelosBroker.spec.wireGuard.enabled`, `ZelosClient.spec.wireGuard.enabled` |
 | **PVC storage class** | ZelosMCP, ZelosBroker, NATS | Cluster default (`storageClassName` unset) or override | `*.spec.persistence.storageClassName` |
 | **OAuth providers** (GitHub / Okta) | ZelosMCP, ZelosGateway, ZelosBroker | User-provided Secret keyed by `providers.json` | `*.spec.authProviderSecretRef` |
-| **TLS material** | Optional all | [cert-manager](https://cert-manager.io/) ClusterIssuer (self-signed / Let's Encrypt / Google Trust Services) or a user-managed Secret. See the `full` overlay examples + [runbook](../runbooks/full-deployment-with-tls-dns.md). | `*.spec.tlsSecretRef` |
-| **Public DNS** (optional) | ZelosGateway Ingress | Manual record, or [external-dns](https://kubernetes-sigs.github.io/external-dns/) → Google Cloud DNS (example in `deploy/full/`). | Ingress host / `external-dns` |
+| **TLS material** | Optional all | [cert-manager](https://cert-manager.io/) ClusterIssuer (self-signed / Let's Encrypt / Google Trust Services) or a user-managed Secret. Under the [DNS standard](./16-dns-and-hostname-standard.md), instances carry **two** wildcard certs — a public one (ACME or internal CA) and an always-internal-CA `.local` one. See the `full` overlay examples + [runbook](../runbooks/full-deployment-with-tls-dns.md). | `*.spec.tlsSecretRef` |
+| **Public DNS zone** (optional) | ZelosGateway Ingress; ACME DNS-01; external-dns | A registered public zone — e.g. a [Google Cloud DNS](https://cloud.google.com/dns) managed zone delegated to your domain — used for ACME DNS-01 wildcard issuance and (optionally) [external-dns](https://kubernetes-sigs.github.io/external-dns/) record publishing. Manual A-record is the no-DNS-zone fallback. Example in `deploy/full/`. | Ingress host / `external-dns` |
+| **Internal CA trust** (for `.local`) | LAN clients of any instance | The suite's internal CA chain signs the `.local` wildcard (no public CA will). To use the `.local` names from the LAN with valid TLS, the internal CA must be trusted on the client. | n/a (client trust store) |
 | **GHCR pull secret** | All | `kubectl create secret docker-registry ghcr-pull-secret …`. See [10-image-registry.md](./10-image-registry.md). | `ZelosPlatform.spec.imagePullSecret` |
-| **vLLM / Ollama** | ZelosClient | Host-side via [`zelos.dgx`](../03-provisioning.md) Ansible. Not Kubernetes-deployed. | `ZelosClient.spec.runtimeURL` |
+| **vLLM / Ollama** | ZelosClient | Host-side via [`zelos.dgx`](./03-provisioning.md) Ansible. Not Kubernetes-deployed. | `ZelosClient.spec.runtimeURL` |
 | **VS Code (host)** | zelos-vscode extension | End-user IDE; extension installed via `.vsix` (Marketplace publish follows v0.2 of the extension). | n/a (not a CRD field) |
 | **Postgres** (future) | (none today) | External | (placeholder field) |
 
@@ -116,3 +117,9 @@ the [container contract](./07-container-contract.md).
 - [10-image-registry.md](./10-image-registry.md) — GHCR pull secret recipe.
 - [11-telemetry.md](./11-telemetry.md) — OTel collector configuration.
 - [03-provisioning.md](./03-provisioning.md) — host-side provisioning via `zelos.dgx`.
+- [16-dns-and-hostname-standard.md](./16-dns-and-hostname-standard.md) — the DNS /
+  hostname standard the dual-cert + public-DNS + `.local` dependencies serve.
+- `zelos.kubernetes`
+  [`docs/google-trust-services-cert-manager.md`](https://github.com/ZelosAI/zelos.kubernetes/blob/develop/docs/google-trust-services-cert-manager.md)
+  — the Google Cloud DNS managed zone + `dns.admin` SA + GTS EAB setup for
+  ACME DNS-01 issuance.

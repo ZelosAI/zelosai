@@ -9,6 +9,11 @@
 # your real DNS name. The gateway stays the ONLY exposed control-plane component
 # (12-auth.md); mcp / backplane / broker are never exposed through Ingress.
 #
+# Host follows the suite DNS standard <service>.<env>.<product>.<domain>
+# (docs/architecture/16-dns-and-hostname-standard.md): here the `gateway` service of the
+# zelosai platform. ZelosAI infra uses e.g. gateway.prod.zelosai.zelosai.cloud; substitute
+# your own env + domain (a single-product deployment may simplify to gateway.<domain>).
+#
 # Pick a ClusterIssuer (apply ONE of the examples in this directory, then set its name in the
 # annotation below) — see README.md "TLS & DNS" + docs/runbooks/full-deployment-with-tls-dns.md:
 #   * issuer-self-signed.example.yaml          -> zelos-selfsigned-ca   (dev/internal, untrusted)
@@ -31,10 +36,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - zelos.example.com
+    - gateway.zelos.example.com
     secretName: zelosgateway-tls
   rules:
-  - host: zelos.example.com
+  - host: gateway.zelos.example.com
     http:
       paths:
       - path: /
