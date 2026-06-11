@@ -268,3 +268,6 @@ credentials in exactly one place: the user's IDE.
 - [16-dns-and-hostname-standard.md](./16-dns-and-hostname-standard.md) — the
   unified `<bed-domain>/oidc` + `/verify-auth` contract, interchangeable
   Dex/Rancher IdPs, and the `oidc_*` parity layer.
+- [17-network-access-gate.md](./17-network-access-gate.md) — the network-layer
+  gate (source-IP allowlist **OR** mTLS client cert) that sits *in front of*
+  this OIDC gate, and the per-bed client CA.
