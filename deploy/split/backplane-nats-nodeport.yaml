@@ -1,0 +1,39 @@
+# Inbound-NATS NodePort for the remote DGX-side zelosclient to DIAL IN.
+#
+# The operator renders the backplane's NATS Service as a HEADLESS ClusterIP
+# (render/nats.go → BuildNATSService, ClusterIP: None) reachable only inside the
+# cluster, and there is no CRD field to change its type. In `split` the
+# zelosclient lives on a remote DGX and must reach NATS across the network, so
+# this overlay adds a SECOND, explicit Service that selects the same NATS Pods
+# and exposes the client port (4222) on a fixed NodePort.
+#
+# The client always dials in; the cluster never dials out to the host
+# (see 01-async-path.md). Only the NATS client port is exposed — the 8222
+# monitoring port and every control-plane service stay in-cluster (12-auth.md).
+#
+# SECURITY: this NodePort is the split topology's one cross-network surface.
+# Lock it to the DGX's address. The supported path is WireGuard (the canonical
+# Zelos VPN substrate — see zelosbroker#12); bind/peer the NodePort to the
+# WireGuard interface so it is never world-reachable. See README.md.
+apiVersion: v1
+kind: Service
+metadata:
+  name: zelos-backplane-nats-ext
+  namespace: zelos
+  labels:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/part-of: zelos
+    zelos.zelosai.io/component: zelosbackplane
+spec:
+  type: NodePort
+  # Selector matches the operator-rendered NATS StatefulSet Pods
+  # (render/nats.go labels: name=nats, instance=<platform name>=default).
+  selector:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/instance: default
+  ports:
+  - name: client
+    port: 4222
+    targetPort: client
+    nodePort: 30422
+    protocol: TCP

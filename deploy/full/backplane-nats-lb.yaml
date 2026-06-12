@@ -1,0 +1,38 @@
+# Inbound-NATS LoadBalancer for the DGX inference fleet to DIAL IN.
+#
+# As in `split`, the operator renders the backplane's NATS Service as a headless
+# ClusterIP with no CRD knob to change its type. In `full` each DGX host runs a
+# host-side `zelosclient` that must reach NATS across the network, so this overlay
+# adds a SECOND Service selecting the same NATS Pods and exposing the client port
+# (4222) via a LoadBalancer scoped to the fleet's network.
+#
+# The clients always dial in; the cluster never dials out (01-async-path.md).
+# Only the client port is exposed — monitoring (8222) and every control-plane
+# service stay in-cluster (12-auth.md).
+#
+# SECURITY: scope the LB to the fleet's network (loadBalancerSourceRanges below)
+# and require a NATS auth token / TLS (backplane.tlsSecretRef) — the link crosses
+# a trust boundary into the GPU hosts. Set the source ranges to your DGX subnet(s)
+# / WireGuard range; the example below is a placeholder, NOT a safe default.
+apiVersion: v1
+kind: Service
+metadata:
+  name: zelos-backplane-nats-ext
+  namespace: zelos
+  labels:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/part-of: zelos
+    zelos.zelosai.io/component: zelosbackplane
+spec:
+  type: LoadBalancer
+  # Restrict to the DGX fleet's network. Replace with your real CIDR(s).
+  loadBalancerSourceRanges:
+  - 10.10.0.0/16
+  selector:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/instance: default
+  ports:
+  - name: client
+    port: 4222
+    targetPort: client
+    protocol: TCP

@@ -1,0 +1,61 @@
+# solo ingress surface — the workstation's only way in.
+#
+# Two complementary objects, both fronting the operator-rendered gateway Service
+# `zelosgateway-default` (ClusterIP, port 8000, see render/service.go):
+#
+#   1. A Traefik Ingress (k3s ships Traefik as the default IngressClass) for
+#      name-based / TLS-terminated access when the workstation can resolve a
+#      hostname to the DGX.
+#   2. A NodePort Service on 30080 for the zero-DNS path: the workstation hits
+#      http://<dgx-ip>:30080 directly. This is the pinned default from
+#      14-deployment-strategies.md (Decisions → "Ingress: Traefik on NodePort 30080").
+#
+# The gateway stays the ONLY authenticated front door; mcp / backplane are never
+# exposed here (trust boundary from 12-auth.md).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zelosgateway-nodeport
+  namespace: zelos
+  labels:
+    app.kubernetes.io/name: zelosgateway
+    app.kubernetes.io/part-of: zelos
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: zelosgateway
+    app.kubernetes.io/instance: default
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+    nodePort: 30080
+    protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zelosgateway
+  namespace: zelos
+  labels:
+    app.kubernetes.io/name: zelosgateway
+    app.kubernetes.io/part-of: zelos
+  annotations:
+    # k3s default ingress controller. Swap for nginx etc. if you replace Traefik.
+    kubernetes.io/ingress.class: traefik
+spec:
+  ingressClassName: traefik
+  rules:
+  # Host-less by default (zero-DNS NodePort path). To add a name, use the suite DNS standard
+  # <service>.<env>.<product>.<domain> (docs/architecture/16-dns-and-hostname-standard.md),
+  # e.g. `host: gateway.solo.zelosai.<domain>`; host-less rules match any Host.
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zelosgateway-default
+            port:
+              number: 8000

@@ -1,0 +1,46 @@
+# Self-signed ClusterIssuer chain — DEV / INTERNAL only.
+#
+# Certs from this issuer are NOT trusted by browsers/CLIs unless you distribute the root CA
+# (extract `zelos-root-ca` from the cert-manager namespace and add it to client trust stores).
+# Chain: bootstrap selfSigned ClusterIssuer -> root CA Certificate -> CA ClusterIssuer.
+#
+# Prereq: cert-manager installed (e.g. `helm install cert-manager jetstack/cert-manager
+#   --set crds.enabled=true -n cert-manager --create-namespace`).
+# Apply:  kubectl apply -f deploy/full/issuer-self-signed.example.yaml
+# Use:    set on deploy/full/gateway-ingress.yaml ->
+#           annotations: { cert-manager.io/cluster-issuer: zelos-selfsigned-ca }
+#
+# This file is an EXAMPLE — it is NOT part of the kustomization (apply it manually).
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: zelos-selfsigned-bootstrap
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: zelos-root-ca
+  namespace: cert-manager          # cert-manager's own namespace
+spec:
+  isCA: true
+  commonName: Zelos Root CA
+  secretName: zelos-root-ca
+  duration: 8760h                  # 1 year
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: zelos-selfsigned-bootstrap
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: zelos-selfsigned-ca        # <- reference THIS from the Ingress annotation
+spec:
+  ca:
+    secretName: zelos-root-ca

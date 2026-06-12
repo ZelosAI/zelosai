@@ -1,0 +1,133 @@
+# Standalone DOWNSTREAM OTel collector — the recommended export target.
+#
+# The operator's in-cluster collector uses a `debug` exporter. Point the
+# platform's telemetry.externalEndpoint at THIS collector
+# (zelos-otel-downstream.zelos.svc:4317) and the operator will skip its own
+# collector and send all OTLP straight here, where it fans out to Loki /
+# Prometheus / Tempo (see README.md and 11-telemetry.md → External endpoint mode).
+#
+# The exporter endpoints below assume the commodity stack installed in an
+# `observability` namespace (Loki, Prometheus with remote-write receiver, Tempo).
+# Adjust the URLs to your install.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zelos-otel-downstream-config
+  namespace: zelos
+  labels:
+    app.kubernetes.io/name: zelos-otel-downstream
+    app.kubernetes.io/part-of: zelos
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      batch: {}
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      # Promote the standard Zelos resource attrs to Loki stream labels so logs
+      # are queryable by component / platform (see 11-telemetry.md attributes).
+      resource:
+        attributes:
+        - { key: loki.resource.labels, value: "service.name,zelos.component,k8s.namespace.name,deployment.environment", action: insert }
+    exporters:
+      # Logs → Loki.
+      loki:
+        endpoint: http://loki.observability.svc:3100/loki/api/v1/push
+      # Metrics → Prometheus remote-write (Prometheus run with --web.enable-remote-write-receiver).
+      prometheusremotewrite:
+        endpoint: http://prometheus.observability.svc:9090/api/v1/write
+        resource_to_telemetry_conversion:
+          enabled: true
+      # Traces → Tempo (OTLP/gRPC).
+      otlp/tempo:
+        endpoint: tempo.observability.svc:4317
+        tls:
+          insecure: true
+    service:
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, batch]
+          exporters: [loki]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [prometheusremotewrite]
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp/tempo]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zelos-otel-downstream
+  namespace: zelos
+  labels:
+    app.kubernetes.io/name: zelos-otel-downstream
+    app.kubernetes.io/part-of: zelos
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zelos-otel-downstream
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zelos-otel-downstream
+        app.kubernetes.io/part-of: zelos
+    spec:
+      containers:
+      - name: otel-collector
+        # Matches the operator's collector image (render/telemetry.go); contrib
+        # build carries the loki / prometheusremotewrite exporters.
+        image: otel/opentelemetry-collector-contrib:0.110.0
+        args: ["--config=/etc/otelcol/config.yaml"]
+        ports:
+        - { name: otlp-grpc, containerPort: 4317, protocol: TCP }
+        - { name: otlp-http, containerPort: 4318, protocol: TCP }
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 512Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otelcol
+          readOnly: true
+        livenessProbe:
+          tcpSocket:
+            port: otlp-grpc
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: zelos-otel-downstream-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zelos-otel-downstream
+  namespace: zelos
+  labels:
+    app.kubernetes.io/name: zelos-otel-downstream
+    app.kubernetes.io/part-of: zelos
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: zelos-otel-downstream
+  ports:
+  - { name: otlp-grpc, port: 4317, targetPort: otlp-grpc, protocol: TCP }
+  - { name: otlp-http, port: 4318, targetPort: otlp-http, protocol: TCP }

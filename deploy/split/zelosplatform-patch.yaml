@@ -1,0 +1,28 @@
+# split: laptop control plane, single-node sizing, in-cluster client OFF.
+#
+# - Single replica everywhere; the laptop is not HA.
+# - The minimum overlay's gateway HPA is removed — a laptop control plane should
+#   not autoscale the gateway against its own CPU.
+# - client.enabled stays FALSE: in `split` the zelosclient runs as a HOST process
+#   on the remote DGX (zelos.dgx), never as a cluster workload. The operator
+#   therefore renders no GPU request and no client DaemonSet (see
+#   14-deployment-strategies.md → NVIDIA device-plugin placement).
+# - StorageClass unset → k3s `local-path` (correct for split).
+#
+# The cross-network reachability for the DGX-side client is added by
+# backplane-nats-nodeport.yaml, not here — the operator's NATS Service is headless
+# ClusterIP and has no CRD knob to change its type.
+apiVersion: zelos.zelosai.io/v1alpha1
+kind: ZelosPlatform
+metadata:
+  name: default
+  namespace: zelos
+spec:
+  gateway:
+    replicas: 1
+    autoscaling:
+      $patch: delete
+  mcp:
+    replicas: 1
+  client:
+    enabled: false

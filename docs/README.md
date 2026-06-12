@@ -18,4 +18,7 @@
 | Look up a single component | [`architecture/04-components/`](./architecture/04-components/) |
 | Follow the gitflow / branching rules | [`architecture/05-gitflow.md`](./architecture/05-gitflow.md) |
 | Look up a naming convention | [`architecture/06-naming-conventions.md`](./architecture/06-naming-conventions.md) |
+| Pick a deployment topology (solo / split / full) | [`architecture/14-deployment-strategies.md`](./architecture/14-deployment-strategies.md) |
+| Know what zelosserver does | [`architecture/13-zelosserver-scope.md`](./architecture/13-zelosserver-scope.md) |
 | Bootstrap a new component repo | [`template/README.md`](./template/README.md) |
+| Add PR-validation CI to a repo | [`template/ci.yml.tmpl`](./template/ci.yml.tmpl) |

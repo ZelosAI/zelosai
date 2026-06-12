@@ -1,0 +1,62 @@
+# Let's Encrypt ACME ClusterIssuers (staging + prod) — publicly-trusted certs, free.
+#
+# Two solvers are shown:
+#   * DNS-01 via Google Cloud DNS (default below) — required for WILDCARD certs and for clusters
+#     with no public inbound :80; needs a Cloud DNS zone + a dns.admin service account.
+#   * HTTP-01 via the nginx Ingress (commented alternative) — simplest for a single public host
+#     that is already reachable on :80.
+#
+# Prereqs (DNS-01): a public domain with a Google Cloud DNS managed zone delegated to it, and a
+#   GCP `dns.admin` service-account key stored as a Secret:
+#     gcloud iam service-accounts create dns01-solver
+#     gcloud projects add-iam-policy-binding $PROJECT_ID \
+#       --member serviceAccount:dns01-solver@$PROJECT_ID.iam.gserviceaccount.com --role roles/dns.admin
+#     gcloud iam service-accounts keys create key.json \
+#       --iam-account dns01-solver@$PROJECT_ID.iam.gserviceaccount.com
+#     kubectl -n cert-manager create secret generic clouddns-dns01-solver-svc-acct --from-file=key.json
+#
+# Apply: kubectl apply -f deploy/full/issuer-letsencrypt.example.yaml
+# Use:   gateway-ingress.yaml -> cert-manager.io/cluster-issuer: letsencrypt-prod
+# Always validate with `letsencrypt-staging` first (prod has strict rate limits).
+#
+# This file is an EXAMPLE — NOT part of the kustomization (apply it manually).
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: ops@example.com                       # <- your contact email
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - dns01:
+          cloudDNS:
+            project: my-gcp-project              # <- the project owning the Cloud DNS zone
+            serviceAccountSecretRef:
+              name: clouddns-dns01-solver-svc-acct
+              key: key.json
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ops@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - dns01:
+          cloudDNS:
+            project: my-gcp-project
+            serviceAccountSecretRef:
+              name: clouddns-dns01-solver-svc-acct
+              key: key.json
+      # --- HTTP-01 alternative (single public host on :80; cannot issue wildcards) ---
+      # - http01:
+      #     ingress:
+      #       ingressClassName: nginx

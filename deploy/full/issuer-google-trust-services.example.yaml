@@ -1,0 +1,45 @@
+# Google Trust Services (GTS) ACME ClusterIssuer — publicly-trusted certs, free tier.
+#
+# GTS is an ACME CA like Let's Encrypt, with two differences:
+#   1. it REQUIRES External Account Binding (EAB) to tie requests to your Google Cloud account;
+#   2. it uses Google's ACME directory URL.
+# DNS-01 via Google Cloud DNS is used here (works for wildcards + private clusters).
+#
+# Prereqs:
+#   gcloud services enable publicca.googleapis.com dns.googleapis.com
+#   # EAB key (single-use, expires in 7 days) — record keyId + b64MacKey:
+#   gcloud publicca external-account-keys create
+#   # dns.admin SA + Secret (same as the Let's Encrypt example):
+#   kubectl -n cert-manager create secret generic clouddns-dns01-solver-svc-acct --from-file=key.json
+#   # EAB HMAC Secret — store the b64MacKey VERBATIM (it is already base64url):
+#   kubectl -n cert-manager create secret generic gts-eab --from-literal=hmac='<b64MacKey>'
+#
+# Apply: kubectl apply -f deploy/full/issuer-google-trust-services.example.yaml
+# Use:   gateway-ingress.yaml -> cert-manager.io/cluster-issuer: google-trust-services
+# Test first with the staging directory (commented below), then switch to prod.
+#
+# This file is an EXAMPLE — NOT part of the kustomization (apply it manually).
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: google-trust-services
+spec:
+  acme:
+    # Production directory. Test directory: https://dv.acme-v02.test-api.pki.goog/directory
+    server: https://dv.acme-v02.api.pki.goog/directory
+    email: ops@example.com                         # <- your contact email
+    privateKeySecretRef:
+      name: gts-account-key
+    externalAccountBinding:
+      keyID: "EAB_KEY_ID"                          # <- `gcloud publicca ... create` keyId
+      keySecretRef:
+        name: gts-eab
+        key: hmac
+    solvers:
+      - dns01:
+          cloudDNS:
+            project: my-gcp-project                # <- the project owning the Cloud DNS zone
+            serviceAccountSecretRef:
+              name: clouddns-dns01-solver-svc-acct
+              key: key.json

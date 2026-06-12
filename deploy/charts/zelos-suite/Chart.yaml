@@ -1,0 +1,14 @@
+apiVersion: v2
+name: zelos-suite
+description: >-
+  Renders a ZelosPlatform CR for the zelosai operator from per-component image
+  values, so Argo CD Image Updater can pin component image digests through the CR
+  (Helm git write-back). The bed overlay (deploy/beds/<bed>/values.yaml) supplies
+  the registry + enabled set per bed. Apply AFTER the operator + CRDs
+  (deploy/operator/) and the deploy-time Secrets exist in the target namespace.
+type: application
+version: 0.1.0
+# Tracks the suite's coordinated release line; bumped with the suite, not per-chart.
+appVersion: "0.3"
+keywords: [zelos, operator, gitops, argocd]
+home: https://github.com/ZelosAI/zelosai

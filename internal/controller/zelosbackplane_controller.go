@@ -7,6 +7,7 @@ import (
 	"github.com/ZelosAI/zelosai/internal/controller/render"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -35,7 +36,9 @@ func (r *ZelosBackplaneReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// NATS: operator-installed StatefulSet + headless Service when no externalURL.
-	if substrate == "nats" && bp.Spec.ExternalURL == "" {
+	operatorManaged := substrate == "nats" && bp.Spec.ExternalURL == ""
+	var wr workloadReadiness
+	if operatorManaged {
 		sts := render.BuildNATSStatefulSet(&bp, bp.Spec)
 		if err := applyObject(ctx, r.Client, r.Scheme, &bp, sts); err != nil {
 			return ctrl.Result{}, err
@@ -45,13 +48,30 @@ func (r *ZelosBackplaneReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{}, err
 		}
 		bp.Status.URL = render.NATSURL(bp.Name, bp.Namespace)
+		wr = statefulSetReadiness(ctx, r.Client, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace})
 	} else {
-		// Redis / Kafka / external NATS: never installed by the operator.
+		// Redis / Kafka / external NATS: never installed by the operator, so we
+		// can't poll a workload — treat a configured substrate as Available.
 		bp.Status.URL = bp.Spec.ExternalURL
+		wr = workloadReadiness{
+			Found:     true,
+			Available: bp.Spec.ExternalURL != "",
+			Reason:    ReasonWorkloadAvailable,
+			Message:   "External substrate (not operator-managed)",
+		}
+		if bp.Spec.ExternalURL == "" {
+			wr.Available = false
+			wr.Reason = ReasonWorkloadUnavailable
+			wr.Message = "External substrate selected but externalURL is unset"
+		}
 	}
 
+	applyWorkloadConditions(&bp.Status.CommonStatus, bp.Generation, wr)
 	bp.Status.ObservedGeneration = bp.Generation
 	_ = r.Status().Update(ctx, &bp)
+	if operatorManaged && !wr.Available {
+		return ctrl.Result{RequeueAfter: componentRequeueInterval()}, nil
+	}
 	return ctrl.Result{}, nil
 }
 

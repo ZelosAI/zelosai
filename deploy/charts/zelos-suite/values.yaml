@@ -1,0 +1,71 @@
+# Defaults render the same minimum-scaled platform as deploy/minimum/, but with
+# per-component image refs as VALUES so Argo CD Image Updater can rewrite them
+# (digest update-strategy → <component>.image.tag = sha256:…). Bed overlays
+# (deploy/beds/<bed>/values.yaml) repoint the registry and toggle components.
+
+# ZelosPlatform metadata
+platformName: default
+namespace: zelos
+
+# Pull secret in the target namespace (docker-registry Secret; provisioned out-of-band).
+imagePullSecret: ghcr-pull-secret
+
+telemetry:
+  enabled: true
+  logLevel: info
+
+# imagePullPolicy applied to every rendered container.
+pullPolicy: IfNotPresent
+
+# --- components ---------------------------------------------------------------
+# image.repository defaults to GHCR; bed overlays point at the bed's Harbor.
+# image.tag is the rolling :develop tag; Image Updater pins it to a digest.
+
+gateway:
+  enabled: true
+  replicas: 2
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilization: 70
+  image:
+    repository: ghcr.io/zelosai/zelosgateway
+    tag: develop
+
+backplane:
+  enabled: true
+  substrate: nats
+  persistence:
+    enabled: true
+    size: 1Gi
+  image:
+    repository: ghcr.io/zelosai/zelosbackplane
+    tag: develop
+
+mcp:
+  enabled: true
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 1Gi
+  authProviderSecretRef: zelos-mcp-auth
+  mcpServersConfigMapRef: zelos-mcp-servers
+  image:
+    repository: ghcr.io/zelosai/zelosmcp
+    tag: develop
+
+broker:
+  enabled: false
+  image:
+    repository: ghcr.io/zelosai/zelosbroker
+    tag: develop
+
+server:
+  enabled: false
+  image:
+    repository: ghcr.io/zelosai/zelosserver
+    tag: develop
+
+# zelosclient is host-resident (off-cluster) by default — disabled in-cluster.
+client:
+  enabled: false

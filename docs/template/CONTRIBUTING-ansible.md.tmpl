@@ -1,0 +1,43 @@
+# Contributing — Ansible conventions
+
+This collection follows the canonical Zelos Ansible conventions:
+[zelosai/docs/architecture/15-ansible-collection-conventions.md](https://github.com/ZelosAI/zelosai/blob/main/docs/architecture/15-ansible-collection-conventions.md)
+and the organization model / variable registry:
+[zelosai/docs/architecture/18-organization-model.md](https://github.com/ZelosAI/zelosai/blob/main/docs/architecture/18-organization-model.md).
+Read those before changing roles, playbooks, or variables — this file is only the digest.
+
+## Load-bearing rules
+
+- **FQCN + layers** — roles are `zelos.<name>.<layer>.<role>`; importable with nothing but
+  inventory vars (§1).
+- **Role anatomy** — `tasks/` holds only `main.yml` (verb dispatcher) + `assert/deploy/destroy/info.yml`
+  + `subtasks/`; destructive verbs tagged `[never, …, destroy]` (§3–4).
+- **One inventory dict per role** — `<role>: {}` → computed `<role>_config` via deep `default()`
+  chains; optionals end in `default(omit)`; activation is presence-driven (§5).
+- **Inventory-driven** — everything comes from `-i inventory/<env>` (config + ONE vaulted
+  `<env>.secrets.yml` + dynamic proxmox inventory). `lookup('env')` only as a sparing,
+  README-documented override — never required (§8–9).
+- **Templates, not blobs** — multi-line content is `templates/*.j2` or `files/`; large variable
+  sets load via `vars_files` (§10).
+- **Modules over shell** — use the pinned community collection; shell only for registered
+  exceptions, wrapped with `changed_when`/`creates` + a comment naming the gap (§11).
+- **Root playbooks are broad verbs only** — reusable processes live in `playbooks/subtasks/`;
+  the secrets lifecycle goes through `zelos.common.secrets` (§7, §18).
+- **Reserved names** — never shadow `environment*`, `tenancy*`, `product`, `root_domain`,
+  `public_port*`, `oidc_*`, `gcp`; harvested secrets carry the producing-role prefix (§6).
+
+## Before you push
+
+```bash
+yamllint .
+ansible-lint                      # config-as-code: .ansible-lint is authoritative
+ansible-galaxy collection build   # must build clean
+ansible-playbook -i inventory/sample playbooks/site.yml --syntax-check
+```
+
+## Gitflow
+
+`main` is protected. Branch `(feature|fix|chore|docs)/<issue-N>-<slug>` → PR into `develop`
+(body: `Closes #N`); `develop`→`main` promotion is a separate PR. See
+[zelosai/docs/architecture/05-gitflow.md](https://github.com/ZelosAI/zelosai/blob/main/docs/architecture/05-gitflow.md).
+Work is tracked on the repo's GitHub Project (see CLAUDE.md).

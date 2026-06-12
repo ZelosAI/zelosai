@@ -1,0 +1,51 @@
+# full ingress — the cluster's authenticated front door for the gateway.
+#
+# Fronts the operator-rendered gateway Service `zelosgateway-default` (ClusterIP,
+# port 8000). Class `nginx` by default (most common); swap `ingressClassName`
+# (and the cert-manager annotation) for traefik / aws-alb / etc. — see README.md.
+#
+# TLS is required for a public `full` Ingress (14-deployment-strategies.md):
+# cert-manager issues the cert into the referenced Secret. Replace the host with
+# your real DNS name. The gateway stays the ONLY exposed control-plane component
+# (12-auth.md); mcp / backplane / broker are never exposed through Ingress.
+#
+# Host follows the suite DNS standard <service>.<env>.<product>.<domain>
+# (docs/architecture/16-dns-and-hostname-standard.md): here the `gateway` service of the
+# zelosai platform. ZelosAI infra uses e.g. gateway.prod.zelosai.zelosai.cloud; substitute
+# your own env + domain (a single-product deployment may simplify to gateway.<domain>).
+#
+# Pick a ClusterIssuer (apply ONE of the examples in this directory, then set its name in the
+# annotation below) — see README.md "TLS & DNS" + docs/runbooks/full-deployment-with-tls-dns.md:
+#   * issuer-self-signed.example.yaml          -> zelos-selfsigned-ca   (dev/internal, untrusted)
+#   * issuer-letsencrypt.example.yaml          -> letsencrypt-prod      (public, free)
+#   * issuer-google-trust-services.example.yaml-> google-trust-services (public, free, EAB)
+# Or drop the annotation entirely and provide your own cert in the `zelosgateway-tls` Secret.
+# Optionally apply external-dns.example.yaml to create the DNS record for the host below.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zelosgateway
+  namespace: zelos
+  labels:
+    app.kubernetes.io/name: zelosgateway
+    app.kubernetes.io/part-of: zelos
+  annotations:
+    # cert-manager ClusterIssuer — swap for your issuer (or drop for BYO TLS).
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - gateway.zelos.example.com
+    secretName: zelosgateway-tls
+  rules:
+  - host: gateway.zelos.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zelosgateway-default
+            port:
+              number: 8000
