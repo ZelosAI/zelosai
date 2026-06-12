@@ -23,7 +23,7 @@ environment* (the word may survive colloquially; variables and docs use `environ
 | **Environment** | one fully deployed instance of a product (alpha, develop, production) | a Rancher **Project** on its hosting cluster; one Dex instance (GitHub or Okta connector); one inventory directory; one secrets file; VMs/LXC/bare-metal compute can also be associated with it |
 | **Tenancy** | a logical container inside an environment | a Kubernetes **namespace** (+ container/VM/LXC/storage quotas); OIDC groups grant access at tenancy, environment, and product scope; RBAC eventually reaches tenant granularity |
 
-### Decisions (locked, v0.5)
+### Decisions (locked, v0.4.8)
 
 - **Tenancy is an optional deeper DNS level.** Environment-level platform services stay at
   `<service>.<environment>.<product>.<domain>` (zero migration of existing names/certs).
@@ -35,11 +35,11 @@ environment* (the word may survive colloquially; variables and docs use `environ
 - **The product label is always present** in environment FQDNs — uniform shape for parsing,
   certs, and external-dns filters. (Single-service appliances still drop only the *service*
   label per doc 16: `prod.bastion.zelosai.cloud`.)
-- **Environment ↔ cluster is an explicit binding, 1:1 in v0.5.** Products can build a dedicated
+- **Environment ↔ cluster is an explicit binding, 1:1 in v0.4.8.** Products can build a dedicated
   cluster or register with an existing one; multiple clusters can share one Proxmox host. The
   binding lives in the tuple (`environment.cluster:`), so moving an environment between clusters
   later is a data change — live mobility (storage migration, DNS retarget, OIDC re-registration)
-  is a future campaign, not v0.5.
+  is a future campaign, not v0.4.8.
 - **Auth:** every environment runs a Dex (or Rancher) IdP with a GitHub **or Okta** application —
   the connector is inventory-driven. OIDC scopes/groups carry access for tenancies, environments,
   and products.
@@ -56,7 +56,7 @@ environment:
   product: foundry
   root_domain: zelosai.cloud  # unset ⇒ legacy single-host path-based routing
   public_port: 9443           # optional; unset/443 ⇒ no suffix
-  cluster:                    # explicit binding (1:1 in v0.5)
+  cluster:                    # explicit binding (1:1 in v0.4.8)
     kind: k3s                 # k3s | k8s | external
     # …provider-specific binding keys
   tenancies: []               # optional; [{name, namespace, quotas, oidc_group}, …]
@@ -76,7 +76,7 @@ playbooks). Roles consume the facts and assert presence in `assert.yml`; they ne
 | `public_port_suffix` | `:<public_port>` or `''` | `:9443` |
 | `auth_fqdn` | `auth.<environment_domain>` | `auth.alpha.foundry.zelosai.cloud` |
 | `oidc_issuer_url`, `oidc_scopes`, `oidc_groups_claim`, `oidc_admin_group` | per the doc-16 parity layer | — |
-| `bed_name`, `bed_domain`, `bed_local_domain` | **deprecated aliases** of the above, emitted for one phase | removed in v0.5 Phase 6 |
+| `bed_name`, `bed_domain`, `bed_local_domain` | **deprecated aliases** of the above, emitted for one phase | removed in v0.4.8 Phase 6 |
 
 Suite-level assertions carried by `environment_facts`:
 
@@ -90,7 +90,7 @@ Suite-level assertions carried by `environment_facts`:
 ## Variable registry — renames (old → new)
 
 Alias-first staging: consumers accept both for one phase; producers rename second; fallbacks
-removed in Phase 6. Each rename lands via its v0.5 issue.
+removed in Phase 6. Each rename lands via its v0.4.8 issue.
 
 | Old | New | Owner |
 |---|---|---|

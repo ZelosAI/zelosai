@@ -161,7 +161,7 @@ a feature sneaks in OR any one strategy fails its smoke run, EA slips.
 - [zelos-vscode#15 — Feature: Per-strategy connection-config guidance (full Ingress / split WireGuard / solo NodePort)](https://github.com/ZelosAI/zelos-vscode/issues/15) — Feature · P1 · v0.5
 - [zelos-vscode#16 — Feature: .vsix Marketplace publish pipeline](https://github.com/ZelosAI/zelos-vscode/issues/16) — Feature · P2 · v0.5
 
-## Infra collections — Ansible standards + refactor campaign (milestone v0.5, infra repos)
+## Infra collections — Ansible standards + refactor campaign (milestone v0.4.8, infra repos)
 
 Distinct from the suite EA v0.5 packaging scope above: a cross-repo campaign over the
 **infrastructure collections** (zelos.common · zelos.proxmox · zelos.kubernetes ·
