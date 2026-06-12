@@ -75,22 +75,32 @@ fragments.
 
 ## Registration — onboarding as inventory
 
-A repo joins an environment via the `repos[]` list in
-`inventory/<env>/<env>.config.yml`:
+A repo joins an environment via the **`cicd_component_repos[]`** list in
+`inventory/<env>/<env>.config.yml` (the canonical name — bare `repos` is too
+generic, and `registry.*` is doc-18 reserved):
 
 ```yaml
-repos:
-  - name: someapp
+cicd_component_repos:
+  - name: someapp                    # opaque project name (never a zelos.* FQCN)
     url: https://github.com/SomeOrg/someapp
     ref: develop                     # the watched branch
     tier: generic                    # generic | bespoke:<template-name>
-    tenancy: someapp                 # doc-18 tenancy (defaults to name)
+    tenancy: someapp                 # doc-18 tenancy facet (defaults to name)
+    registry_project: someapp        # Harbor project (defaults to name)
 ```
 
-This ONE list drives: the Argo Events Sensor bindings (push → build), webhook
-registration (`register_webhooks`), and the tenancy provisioning below.
-Onboarding = manifest in the repo + one registration entry + `make seal` for
-its secrets. Nothing else.
+The entry carries **identity + tenancy only** — build/test/deliver details live
+exclusively in the repo's `.zelos.yaml` (read at build time; never duplicated
+into inventory). This ONE list drives: the Argo Events EventSource/Sensor
+bindings (push → build), webhook registration (`register_webhooks`), and the
+tenancy provisioning below. Onboarding = manifest in the repo + one
+registration entry + `make seal` for its secrets. Nothing else.
+
+**Migration note (v0.4.9):** the pre-contract names
+`argo.events.component_repos` and `workflowtemplates.component_repos` are live
+in real inventories — the foundry roles consume `cicd_component_repos` with
+alias-first deep-default fallbacks to them; the fallbacks drop in the campaign's
+final cleanup slice.
 
 ## Tenancy + trust (the external-repo model)
 
