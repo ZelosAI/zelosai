@@ -170,7 +170,11 @@ zelos.foundry · zelos.bastion · zelos.dgx), tracked on the
 [15-ansible-collection-conventions.md](./docs/architecture/15-ansible-collection-conventions.md)
 + [18-organization-model.md](./docs/architecture/18-organization-model.md).
 
-**In flight (Phase 0 — standards + propagation):**
+**In flight:**
+
+- [zelosai#98 — scaffold zelos.common (collection + zelosctl plugin-CLI framework)](https://github.com/ZelosAI/zelosai/issues/98) — Feature · P1 — PR zelos.common#5 + design doc 19
+
+**Shipped (Phase 0 — standards + propagation, 2026-06-12):**
 
 - [zelosai#96 — docs: Ansible collection conventions v2](https://github.com/ZelosAI/zelosai/issues/96) — Docs · P1
 - [zelosai#97 — docs: organization model + variable registry (18) + DNS tenancy update (16)](https://github.com/ZelosAI/zelosai/issues/97) — Docs · P1
@@ -178,7 +182,7 @@ zelos.foundry · zelos.bastion · zelos.dgx), tracked on the
 
 **Next (Phases 1–6, strict cross-repo ordering — see issue bodies):**
 
-- Phase 1 foundations: [zelosai#98 scaffold zelos.common](https://github.com/ZelosAI/zelosai/issues/98) · common [#1](https://github.com/ZelosAI/zelos.common/issues/1)/[#2](https://github.com/ZelosAI/zelos.common/issues/2)/[#3](https://github.com/ZelosAI/zelos.common/issues/3) (google modules/roles, secrets role) · [foundry#269 legacy env path removal](https://github.com/ZelosAI/zelos.foundry/issues/269) · shell→module [kubernetes#75](https://github.com/ZelosAI/zelos.kubernetes/issues/75)/[proxmox#42](https://github.com/ZelosAI/zelos.proxmox/issues/42)
+- Phase 1 foundations: common [#1](https://github.com/ZelosAI/zelos.common/issues/1)/[#2](https://github.com/ZelosAI/zelos.common/issues/2)/[#3](https://github.com/ZelosAI/zelos.common/issues/3) (google modules/roles, secrets role) · [foundry#269 legacy env path removal](https://github.com/ZelosAI/zelos.foundry/issues/269) · shell→module [kubernetes#75](https://github.com/ZelosAI/zelos.kubernetes/issues/75)/[proxmox#42](https://github.com/ZelosAI/zelos.proxmox/issues/42)
 - Phase 2 adoption + deconfliction (order 15→16/17→18→19): common [#4 environment_facts](https://github.com/ZelosAI/zelos.common/issues/4) · [kubernetes#76](https://github.com/ZelosAI/zelos.kubernetes/issues/76)/[#77](https://github.com/ZelosAI/zelos.kubernetes/issues/77)/[#78](https://github.com/ZelosAI/zelos.kubernetes/issues/78) · [proxmox#43](https://github.com/ZelosAI/zelos.proxmox/issues/43) · [foundry#270](https://github.com/ZelosAI/zelos.foundry/issues/270)/[#271](https://github.com/ZelosAI/zelos.foundry/issues/271)
 - Phase 3 GTS/Cloud DNS consumption: [kubernetes#79 cert_manager](https://github.com/ZelosAI/zelos.kubernetes/issues/79) · [kubernetes#80 external_dns](https://github.com/ZelosAI/zelos.kubernetes/issues/80)
 - Phase 4 bastion roles conversion (greenfield validation; oobm.alpha FROZEN): [bastion#82](https://github.com/ZelosAI/zelos.bastion/issues/82) · [bastion#83](https://github.com/ZelosAI/zelos.bastion/issues/83)
