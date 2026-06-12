@@ -147,3 +147,11 @@ gateway.production.zelosai.zelosai.cloud
 # bastion appliance (single-service: drops only the <service> label, per doc 16)
 prod.bastion.zelosai.cloud
 ```
+
+### Registered (v0.4.9): the CI registration list
+
+`cicd_component_repos[]` — the per-environment list of repos foundry builds
+(doc 20): items `{name, url, ref, tier, tenancy, registry_project}`. `name` is
+an opaque project label (never a `zelos.*` FQCN); `tenancy` defaults to `name`.
+Deprecated aliases (alias-first, removed at the v0.4.9 cleanup):
+`argo.events.component_repos`, `workflowtemplates.component_repos`.
