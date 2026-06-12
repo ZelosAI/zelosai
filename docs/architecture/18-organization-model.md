@@ -43,15 +43,16 @@ environment* (the word may survive colloquially; variables and docs use `environ
 - **Auth:** every environment runs a Dex (or Rancher) IdP with a GitHub **or Okta** application —
   the connector is inventory-driven. OIDC scopes/groups carry access for tenancies, environments,
   and products.
-- **Word forms:** `environment` alone is an **Ansible-reserved variable name** — variables always
-  use the full-word derived forms below. *Tenancy* is the level; a *tenant* is an instance of it.
+- **Word forms:** `environment` alone is an **Ansible-reserved variable name** — the inventory
+  dict is therefore `environment_identity:` and derived facts use the full-word forms below. *Tenancy* is the level; a *tenant* is an instance of it.
 
 ## The inventory shape
 
 Set once per environment (in `inventory/<env>/<env>.config.yml`):
 
 ```yaml
-environment:
+# NB: `environment` alone is an Ansible-RESERVED name — the tuple is environment_identity.
+environment_identity:
   name: alpha                 # ^[a-z0-9-]+$
   product: foundry
   root_domain: zelosai.cloud  # unset ⇒ legacy single-host path-based routing
@@ -94,7 +95,7 @@ removed in Phase 6. Each rename lands via its v0.4.8 issue.
 
 | Old | New | Owner |
 |---|---|---|
-| `cluster: {root_domain, product, bed, public_port}` | `environment: {name, product, root_domain, public_port, cluster:{}}` | all |
+| `cluster: {root_domain, product, bed, public_port}` | `environment_identity: {name, product, root_domain, public_port, cluster:{}}` | all |
 | `bed_name` / `bed_domain` / `bed_local_domain` | `environment_name` / `environment_domain` / `environment_local_domain` | zelos.common.environment_facts |
 | duplicated `set_fact` identity blocks (platform.yml / deploy.yml) | `include_role: zelos.common.environment_facts` | zelos.kubernetes, zelos.foundry |
 | `(istio.gateway).public_port` fallback chains | `environment.public_port` fact | zelos.kubernetes |
