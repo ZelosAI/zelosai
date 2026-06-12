@@ -201,3 +201,7 @@ gateway.prod.zelosai.<domain>                # the ZelosPlatform gateway Ingress
   certificates on the WAN, on a non-standard port, on the management port, and on `.local`.
 - **Backward compatible** — gated on the `cluster:` dict; existing single-host path-based
   deployments are unaffected.
+
+See also [17-network-access-gate.md](./17-network-access-gate.md) — the network-layer gate
+(source-IP allowlist **OR** mTLS client cert, then OIDC) that protects the public names
+defined by this standard, and the per-bed `zelos-client-ca`.
