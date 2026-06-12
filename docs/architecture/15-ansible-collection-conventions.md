@@ -184,9 +184,9 @@ and [16-dns-and-hostname-standard.md](16-dns-and-hostname-standard.md) (DNS/TLS 
 roles need to know:
 
 - The **identity tuple** is set once per environment in inventory:
-  `environment: {name, product, root_domain, cluster: {...}, public_port}` (+ optional
-  `tenancies:`). `environment` alone is an Ansible-reserved word — derived facts use full-word
-  names: `environment_name`, `environment_domain`, `environment_local_domain`,
+  `environment_identity: {name, product, root_domain, cluster: {...}, public_port}` (+ optional
+  `tenancies:`) — `environment` alone is an Ansible-reserved word, hence the `_identity` suffix;
+  derived facts use full-word names: `environment_name`, `environment_domain`, `environment_local_domain`,
   `public_port_suffix`, `auth_fqdn`, the `oidc_*` family.
 - Facts are **derived exactly once** by `zelos.common.environment_facts` (tags `[always]`,
   included at the top of orchestration playbooks). Roles never re-derive them — they consume the
@@ -383,9 +383,9 @@ collections_path = ~/.ansible/collections:./.ansible/collections
 roles_path = roles
 host_key_checking = False
 retry_files_enabled = False
-stdout_callback = yaml
+stdout_callback = ansible.builtin.default
+callback_result_format = yaml      # community.general.yaml callback was removed upstream
 callbacks_enabled = timer, profile_roles, profile_tasks   # timing visibility on long runs
-jinja2_native = True
 forks = 20
 interpreter_python = auto_silent
 

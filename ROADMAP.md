@@ -170,9 +170,10 @@ zelos.foundry · zelos.bastion · zelos.dgx), tracked on the
 [15-ansible-collection-conventions.md](./docs/architecture/15-ansible-collection-conventions.md)
 + [18-organization-model.md](./docs/architecture/18-organization-model.md).
 
-**In flight:**
+**Ready for QA (merged to develop, awaiting promotion):**
 
-- [zelosai#98 — scaffold zelos.common (collection + zelosctl plugin-CLI framework)](https://github.com/ZelosAI/zelosai/issues/98) — Feature · P1 — PR zelos.common#5 + design doc 19
+- [zelosai#98 — scaffold zelos.common (collection + zelosctl plugin-CLI framework)](https://github.com/ZelosAI/zelosai/issues/98) — Feature · P1 — zelos.common#5 + design doc 19 (#102)
+- [zelos.common#4 — environment_facts role (identity derivation + bed_* aliases + suite assertions)](https://github.com/ZelosAI/zelos.common/issues/4) — Feature · P1 — zelos.common#6
 
 **Shipped (Phase 0 — standards + propagation, 2026-06-12):**
 
