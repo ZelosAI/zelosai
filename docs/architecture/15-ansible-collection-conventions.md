@@ -310,7 +310,7 @@ Configuration is **rendered, not concatenated** — in roles *and* in playbooks:
 - Large variable sets load from `vars_files` / `include_vars` out of the role/playbook/collection
   directories — not as giant inline `vars:` blocks in a play.
 - **Banned:** large `copy: content: |` blobs and configs assembled from `blockinfile`/`lineinfile`
-  fragments. (The pre-v0.5 `zelos.bastion/playbooks/devvm.yml` — 10+ inline content blocks — is
+  fragments. (The pre-v0.4.8 `zelos.bastion/playbooks/devvm.yml` — 10+ inline content blocks — is
   the canonical negative example; unreadable by a human.)
 - Allowed: trivial 1–3-line `content:` (marker files, single-value confs); `lineinfile` for
   single-line edits of foreign files; `blockinfile` ONLY for a marker-managed stanza in a file
@@ -522,8 +522,8 @@ The CLI is **plugin-based** (kubectl/git model):
 
 ## 20. Convergence checklist (living appendix)
 
-Known non-conformances at the time of the v0.5 rewrite — each row is a tracked issue in the
-owning repo (Zelos Foundry Tracker, milestone v0.5):
+Known non-conformances at the time of the v0.4.8 rewrite — each row is a tracked issue in the
+owning repo (Zelos Foundry Tracker, milestone v0.4.8):
 
 | Non-conformance | Owner | Issue |
 |---|---|---|
