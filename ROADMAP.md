@@ -161,6 +161,30 @@ a feature sneaks in OR any one strategy fails its smoke run, EA slips.
 - [zelos-vscode#15 — Feature: Per-strategy connection-config guidance (full Ingress / split WireGuard / solo NodePort)](https://github.com/ZelosAI/zelos-vscode/issues/15) — Feature · P1 · v0.5
 - [zelos-vscode#16 — Feature: .vsix Marketplace publish pipeline](https://github.com/ZelosAI/zelos-vscode/issues/16) — Feature · P2 · v0.5
 
+## Infra collections — Ansible standards + refactor campaign (milestone v0.5, infra repos)
+
+Distinct from the suite EA v0.5 packaging scope above: a cross-repo campaign over the
+**infrastructure collections** (zelos.common · zelos.proxmox · zelos.kubernetes ·
+zelos.foundry · zelos.bastion · zelos.dgx), tracked on the
+[Zelos Foundry Tracker](https://github.com/orgs/ZelosAI/projects/5). Canon:
+[15-ansible-collection-conventions.md](./docs/architecture/15-ansible-collection-conventions.md)
++ [18-organization-model.md](./docs/architecture/18-organization-model.md).
+
+**In flight (Phase 0 — standards + propagation):**
+
+- [zelosai#96 — docs: Ansible collection conventions v2](https://github.com/ZelosAI/zelosai/issues/96) — Docs · P1
+- [zelosai#97 — docs: organization model + variable registry (18) + DNS tenancy update (16)](https://github.com/ZelosAI/zelosai/issues/97) — Docs · P1
+- Per-repo propagation: [proxmox#41](https://github.com/ZelosAI/zelos.proxmox/issues/41) · [kubernetes#74](https://github.com/ZelosAI/zelos.kubernetes/issues/74) · [foundry#268](https://github.com/ZelosAI/zelos.foundry/issues/268) · [bastion#81](https://github.com/ZelosAI/zelos.bastion/issues/81) · [dgx#45](https://github.com/ZelosAI/zelos.dgx/issues/45) — Chore · P1
+
+**Next (Phases 1–6, strict cross-repo ordering — see issue bodies):**
+
+- Phase 1 foundations: [zelosai#98 scaffold zelos.common](https://github.com/ZelosAI/zelosai/issues/98) · common [#1](https://github.com/ZelosAI/zelos.common/issues/1)/[#2](https://github.com/ZelosAI/zelos.common/issues/2)/[#3](https://github.com/ZelosAI/zelos.common/issues/3) (google modules/roles, secrets role) · [foundry#269 legacy env path removal](https://github.com/ZelosAI/zelos.foundry/issues/269) · shell→module [kubernetes#75](https://github.com/ZelosAI/zelos.kubernetes/issues/75)/[proxmox#42](https://github.com/ZelosAI/zelos.proxmox/issues/42)
+- Phase 2 adoption + deconfliction (order 15→16/17→18→19): common [#4 environment_facts](https://github.com/ZelosAI/zelos.common/issues/4) · [kubernetes#76](https://github.com/ZelosAI/zelos.kubernetes/issues/76)/[#77](https://github.com/ZelosAI/zelos.kubernetes/issues/77)/[#78](https://github.com/ZelosAI/zelos.kubernetes/issues/78) · [proxmox#43](https://github.com/ZelosAI/zelos.proxmox/issues/43) · [foundry#270](https://github.com/ZelosAI/zelos.foundry/issues/270)/[#271](https://github.com/ZelosAI/zelos.foundry/issues/271)
+- Phase 3 GTS/Cloud DNS consumption: [kubernetes#79 cert_manager](https://github.com/ZelosAI/zelos.kubernetes/issues/79) · [kubernetes#80 external_dns](https://github.com/ZelosAI/zelos.kubernetes/issues/80)
+- Phase 4 bastion roles conversion (greenfield validation; oobm.alpha FROZEN): [bastion#82](https://github.com/ZelosAI/zelos.bastion/issues/82) · [bastion#83](https://github.com/ZelosAI/zelos.bastion/issues/83)
+- Phase 5 composition flip: [kubernetes#81](https://github.com/ZelosAI/zelos.kubernetes/issues/81) · [foundry#272](https://github.com/ZelosAI/zelos.foundry/issues/272)
+- Phase 6 cutover + cleanup: zelosctl entrypoints [foundry#273](https://github.com/ZelosAI/zelos.foundry/issues/273)/[bastion#84](https://github.com/ZelosAI/zelos.bastion/issues/84) · per-repo cleanup [proxmox#44](https://github.com/ZelosAI/zelos.proxmox/issues/44)/[kubernetes#82](https://github.com/ZelosAI/zelos.kubernetes/issues/82)/[foundry#274](https://github.com/ZelosAI/zelos.foundry/issues/274)/[bastion#85](https://github.com/ZelosAI/zelos.bastion/issues/85) · umbrella [zelosai#99](https://github.com/ZelosAI/zelosai/issues/99)
+
 ## v0.6 — pre-1.0 hardening (post-EA, before v1.0)
 
 User explicitly wanted SMB to land before v1.0. v0.6 absorbs SMB plus any
