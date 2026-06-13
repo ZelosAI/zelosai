@@ -38,14 +38,19 @@ build:
 
 test:
   unit: "make test"                 # run containerized + unprivileged; non-zero fails the build
+  image: golang:1.26                # REQUIRED with test.unit — the toolchain image the
+                                    # command runs in (the pipeline cannot guess a toolchain)
   integration:                      # OPTIONAL: how the CUT joins the bed integration suite
     cut: helm                       # helm | manifests
     path: deploy/chart              # what the suite deploys as the component-under-test
+    suite_image: golang:1.25-bookworm   # OPTIONAL: toolchain for the suite run (it-run default)
 
 deliver:
   registry_project: someapp         # Harbor project (per-tenancy robot scopes to it)
   chart: deploy/chart               # OPTIONAL: chart/manifest delivery path
   versioning: tag                   # tag | sha | develop-floating
+  ghcr:                             # OPTIONAL: promote to GHCR on main (first-party
+    namespace: zelosai              # suite parity; external repos omit this)
 
 secrets: [SOMEAPP_API_KEY]          # NAMES ONLY — values resolve from the environment
                                     # inventory at run time; a manifest never carries values
@@ -56,10 +61,22 @@ Rules:
 - **Names only for secrets** — the environment's sealed inventory maps them
   (doc 18 registry discipline). A manifest carrying a value fails validation.
 - Everything beyond `schema`/`name`/`build` is optional — absent ⇒ feature off
-  (the §5 presence convention, applied to repos).
+  (the §5 presence convention, applied to repos). The one coupling: `test.image`
+  is required when `test.unit` is set.
 - The manifest is the repo's "one inventory dict" (§5): foundry reads it
   AFTER clone, inside the pipeline — the registration entry (below) never
   duplicates its contents.
+- `name` must equal the registration entry's `name`, and `deliver.registry_project`
+  (when restated) must equal the registration's — **the registration is
+  authoritative**; a repo cannot claim another project's identity or Harbor
+  project from inside its own manifest.
+
+v1 implementation notes (`zelos-build-generic`, foundry #295): `deliver.versioning:
+develop-floating` pushes `:<sha>` plus a floating `:develop`/`:main` retag (the tag
+the suite CD's Image Updater watches); non-amd64 `platforms` are accepted but built
+amd64-only today; `deliver.chart` is accepted but chart publishing is not wired yet;
+the integration trigger is limited to repos delivering into the `zelos` Harbor
+project (an it-run parameter gap).
 
 ## The two tiers
 
