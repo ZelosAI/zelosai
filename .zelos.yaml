@@ -1,0 +1,26 @@
+# The buildable-repo contract (docs/architecture/20-buildable-repo-contract.md,
+# schema v1) — what zelos.foundry builds/tests/delivers for this repo. PILOT 1
+# of the v0.4.9 generic-pipeline migration (#108). Read by zelos-build-generic
+# AFTER clone; identity/tenancy live in the environment's cicd_component_repos[]
+# registration (which is authoritative for the Harbor project).
+schema: v1
+name: zelosai
+
+build:
+  images:
+    - name: zelosai                # → <harbor>/zelos/zelosai (the operator manager image)
+      context: .
+      dockerfile: Dockerfile
+      platforms: [amd64]
+
+test:
+  # gotestsum wraps `go test` so JUnit lands in the results dir the Allure render
+  # picks up (parity with the retired bespoke pipeline's foundry/test report).
+  unit: 'go run gotest.tools/gotestsum@v1.12.3 --junitfile "$ZELOS_TEST_RESULTS_DIR/junit.xml" --format pkgname -- -race -count=1 ./...'
+  image: golang:1.26
+
+deliver:
+  registry_project: zelos          # the suite CD (Image Updater) watches zelos/zelosai:develop
+  versioning: develop-floating     # push :<sha> + retag :develop/:main (the tag CD pins by digest)
+  ghcr:
+    namespace: zelosai             # promote to ghcr.io/zelosai/zelosai on main

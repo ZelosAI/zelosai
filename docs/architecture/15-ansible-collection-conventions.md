@@ -139,14 +139,16 @@ sanctioned; `tasks_from` is the primary mechanism in orchestration playbooks.
 
 ## 5. Variable convention (the load-bearing rule)
 
-**Every role exposes exactly one inventory-facing dict — `<role>: {}` — and nothing else.**
-`defaults/main.yml` maps that dict into computed internal vars using deep `default()` chains, so
-operators set one well-named block and the role fills in every default.
+**Every role exposes exactly one inventory-facing dict, and it lives at
+`<collection>.<role>` in the format-2 inventory.** `defaults/main.yml` BINDS that path to the
+role-local name once, then maps it into computed internal vars using deep `default()` chains, so
+operators set one well-named block under their collection root and the role fills in every default.
 
 ```yaml
 # roles/foundation/istio/defaults/main.yml
 ---
-istio: {}                                              # the ONLY inventory-facing var
+# §15.5 binding — the inventory-facing dict lives at kubernetes.istio (format 2)
+istio: "{{ (kubernetes | default({})).istio | default({}) }}"
 k8s_namespace: "{{ istio.namespace | default('istio-system') }}"
 istio_config:
   enabled:      "{{ istio.enabled      | default(true) }}"
@@ -160,15 +162,22 @@ gateway_api:
 Rules:
 
 - Never read bare top-level vars inside tasks/templates — read the computed `<role>_*` vars.
+- **Cross-reads are bound too**: a role consuming another role's dict (same or another
+  collection) declares its own §15.5 binding for it in `defaults/main.yml`
+  (`dex: "{{ (kubernetes | default({})).dex | default({}) }}"`) — never a bare read. The two
+  renamed narrow dicts get role-local names (`pve_api` for `proxmox.api`; read
+  `kubernetes.cluster.*` inline) because their bare names ARE collection roots.
 - Nested optionals use the `(x | default({})).y | default(...)` idiom so a partial dict never errors.
 - **Optional values default to `omit`, not `''`** — `default(omit)` keeps rendered YAML/JSON
   clean and makes "unset" testable. Reserve `''` for values where empty-string is meaningful.
 - **Activation is presence-driven**: the existence of the role's dict (or list/field) in the
-  inventory — refined by an `enabled` flag inside it — determines whether the role applies:
-  `when: <role> is defined and <role> is mapping and (<role>.enabled | default(true))`.
+  inventory — refined by an `enabled` flag inside it — determines whether the role applies.
+  Playbook gates test the NESTED path (role defaults are not in scope at include time):
+  `when: (((<collection> | default({})).<role> | default({})).enabled | default(<role default>))`.
 - **Resolution order** for any input: *env override* (sparing + documented, §9) → *role dict
-  key* → *vaulted/harvested inventory var* → *default / omit*. Every chain MUST terminate in an
-  inventory var or default — never require an environment variable.
+  key* → *sectioned vaulted/harvested inventory var* (`(<collection>_secrets | default({})).<key>`)
+  → *default / omit*. Every chain MUST terminate in an inventory var or default — never require
+  an environment variable.
 - Any **derived name** (Kubernetes Secret names, secrets-file keys, container env-var names) is
   computed once in `defaults/main.yml` — never assembled inline in tasks.
 - Cross-role values pass explicitly (registered facts / `set_fact` / vars on `include_role`) —
@@ -248,15 +257,26 @@ form, imported with `include_tasks` / `import_playbook` as appropriate).
   The only sanctioned `-e` uses are ad-hoc verb flags (`confirm_destroy`, `<role>_destroy_data`,
   `secrets_action`).
 
-## 8. Inventory: per-environment directories
+## 8. Inventory: per-environment directories (format 2 — per-collection dicts)
 
 Each deployment environment is a directory — the **single entry point** for everything:
 
 ```
 inventory/
 ├── <env>/                      # one directory per environment (gitignored except sample)
-│   ├── <env>.config.yml        # all environment vars (identity tuple + role dicts)
-│   ├── <env>.secrets.yml       # THE secrets file — every value an inline `!vault` block
+│   ├── <env>.config.yml        # all environment vars, grouped by OWNING COLLECTION:
+│   │                           #   zelos_inventory_format: 2      (the hard-cutover marker)
+│   │                           #   common:      environment_identity, gcp, github_oauth, oidc,
+│   │                           #                extra_ca, secrets, gts_eab, clouddns
+│   │                           #   proxmox:     api (the PVE conn — renamed from top-level
+│   │                           #                proxmox:), pve_*, network, storage, guest,
+│   │                           #                cp_routable, ceph, vms, zelos_storage_share
+│   │                           #   kubernetes:  cluster (renamed from top-level kubernetes:),
+│   │                           #                k3s, kubeconfig, cert_manager, istio, dex, ...
+│   │                           #   foundry:     harbor, argocd, argo_*, minio, results, ...
+│   │                           #   bastion:     the appliance dict (already namespaced)
+│   ├── <env>.secrets.yml       # THE secrets file — <collection>_secrets: sections of
+│   │                           #   inline `!vault` values (key NAMES per the doc-18 registry)
 │   ├── <env>.proxmox.yml       # dynamic inventory (community.proxmox) — discovery by tag
 │   └── <env>.pve.yml           # static host entries (PVE host / connection setup)
 └── sample/                     # committed; documents EVERY role's full surface with defaults
@@ -264,13 +284,23 @@ inventory/
 ```
 
 - Invoke with `ansible-playbook -i inventory/<env> playbooks/site.yml` — Ansible merges every
-  file in the directory; `all: vars:` accumulate.
+  file in the directory; `all: vars:` accumulate. A dict's owner is the collection whose ROLE
+  consumes it (`provision_proxmox` is zelos.kubernetes's; `dex_clients` is foundry's); other
+  collections cross-read via §5 bindings. Secrets sections use distinct `<collection>_secrets`
+  root names because two inventory sources defining the SAME top-level key clobber each other.
+- **Hard cutover:** every orchestration playbook asserts `zelos_inventory_format: 2` (via
+  `zelos.common.environment_facts` preflight). Pre-format-2 inventories are converted in place
+  by `zelosctl inventory migrate --env <env>` (or the console's *Migrate Inventory* verb) —
+  line-based and vault-safe (ciphertext moves verbatim), comment-preserving, idempotent,
+  originals kept as `*.bak`; unmapped keys are left flat and reported.
 - **Dynamic inventory is preferred** where the platform supports it: `community.proxmox.proxmox`
   discovers VMs + LXC and groups by tag (LXC nodes get `proxmox_pct_remote`). Static files cover
-  what discovery can't.
+  what discovery can't. (These files are env-var-driven at parse time and are unaffected by the
+  format-2 grouping.)
 - **One vaulted secrets file per environment** (`<env>.secrets.yml`): the single home for every
-  secret the environment needs — operator-provided and harvested (§18). Values are
-  inline-`!vault` encrypted (mergeable, diffable, safe to commit if an operator opts in).
+  secret the environment needs — operator-provided and harvested (§18), each under its owning
+  collection's section. Values are inline-`!vault` encrypted (mergeable, diffable, safe to
+  commit if an operator opts in).
 - The committed **sample environment** documents every variable for every role with its default —
   operators copy the directory, customize, and flip role dicts on. Real environment dirs are
   gitignored.
@@ -475,16 +505,21 @@ lives in `zelos.common`; consumers call it via `playbooks/subtasks/secrets.yml` 
   value an inline `!vault |` block (`ansible-vault encrypt_string --stdin-name`) — live on the
   next run with zero loading machinery.
 - **Key names follow the §6 prefix rule** (`pve_ceph_*`, `bastion_*`, …).
-- **Source spec** — a `sources:` list of `{name, from, …}` derived (with literal fallbacks) from
-  the same inventory dicts the producing roles read. `from`: `file` (raw), `file_b64`
-  (binary-safe), `file_grep` (`export KEY='…'`), `shell` (stdout). `optional: true` skips absent
-  sources.
+- **Source spec** — a `sources:` list of `{name, from, section, …}` derived (with literal
+  fallbacks) from the same inventory dicts the producing roles read. `from`: `file` (raw),
+  `file_b64` (binary-safe), `file_grep` (`export KEY='…'`), `shell` (stdout), `k8s_secret`.
+  `optional: true` skips absent sources. **`section` is REQUIRED** (asserted): the format-2
+  `<collection>_secrets` section a NEW key lands in — an existing key is updated wherever the
+  operator keeps it (their placement wins). `generated:` specs carry `section` the same way.
 - **Harvest path:** gather the value **on the host**, pipe it via **stdin** into
   `encrypt_string` **on the controller** (`no_log` throughout — plaintext never lands on disk; a
   `secrets_debug` toggle lifts it for troubleshooting on a throwaway environment).
 - **Merge, never overwrite:** harvested keys **update in place**, operator-**provided** keys are
-  **preserved**, new keys appended, header kept (`files/merge_secrets.py`). Operators can
-  hand-add secrets and a later harvest won't clobber them.
+  **preserved**, new keys appended under their declared section, header + section order kept
+  (`files/merge_secrets.py` — deliberately line-based so `!vault` ciphertext round-trips
+  byte-for-byte; it REFUSES a pre-format-2 flat file with a pointer at the migration verb, and
+  tolerates flat leftovers the migration deliberately left unsectioned). Operators can hand-add
+  secrets and a later harvest won't clobber them.
 - **Vault password:** `secrets.vault_password_file` → `$ANSIBLE_VAULT_PASSWORD_FILE` →
   `$ANSIBLE_VAULT_PASSWORD` (staged to a temp 0600 file). Clear `ANSIBLE_VAULT_PASSWORD_FILE`
   for the `encrypt_string` call so the resolved pass-file is the sole default vault-id (else

@@ -48,19 +48,22 @@ environment* (the word may survive colloquially; variables and docs use `environ
 
 ## The inventory shape
 
-Set once per environment (in `inventory/<env>/<env>.config.yml`):
+Set once per environment (in `inventory/<env>/<env>.config.yml`, format 2 — the identity tuple
+lives in the `common:` collection dict):
 
 ```yaml
-# NB: `environment` alone is an Ansible-RESERVED name — the tuple is environment_identity.
-environment_identity:
-  name: alpha                 # ^[a-z0-9-]+$
-  product: foundry
-  root_domain: zelosai.cloud  # unset ⇒ legacy single-host path-based routing
-  public_port: 9443           # optional; unset/443 ⇒ no suffix
-  cluster:                    # explicit binding (1:1 in v0.4.8)
-    kind: k3s                 # k3s | k8s | external
-    # …provider-specific binding keys
-  tenancies: []               # optional; [{name, namespace, quotas, oidc_group}, …]
+zelos_inventory_format: 2     # the format-2 marker — every orchestration playbook asserts it
+common:
+  # NB: `environment` alone is an Ansible-RESERVED name — the tuple is environment_identity.
+  environment_identity:
+    name: alpha                 # ^[a-z0-9-]+$
+    product: foundry
+    root_domain: zelosai.cloud  # unset ⇒ legacy single-host path-based routing
+    public_port: 9443           # optional; unset/443 ⇒ no suffix
+    cluster:                    # explicit binding (1:1 in v0.4.8)
+      kind: k3s                 # k3s | k8s | external
+      # …provider-specific binding keys
+    tenancies: []               # optional; [{name, namespace, quotas, oidc_group}, …]
 ```
 
 ## Derived facts — `zelos.common.environment_facts`
@@ -105,31 +108,48 @@ removed in Phase 6. Each rename lands via its v0.4.8 issue.
 | `cert_manager.acme.dns01.gcp_project` + `external_dns.gcp_project` (independent) | both default from shared `gcp: {project}` (+ equality assert) | zelos.kubernetes, zelos.common |
 | bare bastion secrets (`github_oauth_client_id`, `postgres_password`, …) in standalone mode | `bastion_`-prefixed in **both** modes | zelos.bastion |
 | `bastion_bed:` scoped dict (bed mode) + legacy top-level dicts (standalone) | one `bastion:` interface dict | zelos.bastion |
+| **format 2 (HARD CUTOVER — no alias phase; `zelosctl inventory migrate` converts):** | | |
+| every flat top-level role dict | nested under its owning collection root: `common:` / `proxmox:` / `kubernetes:` / `foundry:` / `bastion:` (ownership = the collection whose role consumes it; the authoritative map is `zelos_common.inventory_migrate.CONFIG_MAP`) | all |
+| `proxmox: {api_host, api_user, node, ssh_user, ssh_key_path, verify_tls}` (the PVE conn dict) | `proxmox.api` (bare name collided with the collection root) | zelos.proxmox → all consumers |
+| `kubernetes: {version, cluster_endpoint, *_cidr, disable, tls_sans}` (the cluster dict) | `kubernetes.cluster` (bare name collided with the collection root) | zelos.kubernetes |
+| flat secret keys | grouped into `<collection>_secrets:` sections, key NAMES unchanged (distinct roots — same-named top-level keys across inventory sources clobber) | all |
+| (absent) | `zelos_inventory_format: 2` marker, asserted by every orchestration playbook | zelos.common.environment_facts |
 
 ## Per-environment secrets key inventory
 
-The single `inventory/<env>/<env>.secrets.yml` carries (inline-`!vault`, §18 of doc 15):
+The single `inventory/<env>/<env>.secrets.yml` carries (inline-`!vault`, §18 of doc 15), each
+key in its owning collection's `<collection>_secrets:` section (names unchanged — the section
+is pure grouping; the authoritative map is `zelos_common.inventory_migrate.SECRETS_MAP` +
+prefix rules):
 
-- **Operator-provided:** `github_oauth_client_id/_secret` (per environment), `gcp_dns_sa_json`,
-  `gts_eab_key_id`, `gts_eab_hmac`, `ghcr_push_token`, `gh_token`, `zelos_suite_git_token`,
-  Okta client credentials where used.
-- **Infra-minted (harvested):** `proxmox_api_token_id/_secret`, the `pve_ceph_*` family,
-  `kubeconfig_content`.
-- **In-cluster-generated (harvested):** `dex_*_client_secret`, `oauth2_proxy_cookie_secret`,
-  `argocd_admin_password`, `harbor_admin_password`, `minio_root_password`,
-  `rancher_bootstrap_password`.
-- **Bastion-scoped (its own instance):** `bastion_github_oauth_client_id/_secret` (+ `_alt`),
+- **`common_secrets`** (environment-level identity/creds): `github_oauth_client_id/_secret`,
+  `gcp_dns_sa_json`, `gts_eab_key_id`, `gts_eab_hmac`, `gts_eab_minted_at`, Okta client
+  credentials where used.
+- **`proxmox_secrets`** (infra-minted by the host roles): `proxmox_api_token_id/_secret`, the
+  `pve_ceph_*` family, `zelosadmin_password`, `zelosadmin_ssh_private_key`, `idrac_username`,
+  `idrac_password`, `idrac_ssh_password`.
+- **`kubernetes_secrets`** (cluster + foundation harvest): `kubeconfig_content`,
+  `dex_*_client_secret`, `oauth2_proxy_cookie_secret`, `rancher_bootstrap_password`.
+- **`foundry_secrets`** (product-layer): `harbor_admin_password`, `argocd_admin_password`,
+  `minio_root_password`, `ghcr_push_token`, `gh_token`, `zelos_suite_git_token`,
+  `zelos_mcp_fernet_key`.
+- **`bastion_secrets`** (its own instance): `bastion_github_oauth_client_id/_secret` (+ `_alt`),
   `bastion_postgres_password`, `bastion_gts_eab_key_id/_hmac`, `bastion_gcp_dns_sa_json`
-  (falls back to the shared `gcp_dns_sa_json`), `bastion_sync_proxmox_token_id/_secret`
-  (falls back to `proxmox_api_token_id/_secret`), `bastion_ssh_private_key`,
+  (falls back to the shared `common_secrets.gcp_dns_sa_json`),
+  `bastion_sync_proxmox_token_id/_secret` (falls back to
+  `proxmox_secrets.proxmox_api_token_id/_secret`), `bastion_ssh_private_key`,
   `bastion_kubernetes_client_cert/_key/_ca_cert`, `bastion_cas_ca_chain`,
   `bastion_alt_tls_cert/_key`, `bastion_github_user_sync_token`,
-  `bastion_workstation_user_secret`.
+  `bastion_workstation_user_secret`, `bastion_console_oauth2_client_secret/_cookie_secret`.
 
 ## Reserved names
 
-No role's interface dict may shadow: `environment*`, `tenancy*`, `tenancies`, `product`,
-`root_domain`, `public_port*`, `auth_fqdn`, `oidc_*`, `gcp`, `bed_*` (deprecated alias space).
+No role's interface dict may shadow the format-2 top-level namespace: the collection roots
+(`common`, `proxmox`, `kubernetes`, `foundry`, `bastion`), the secrets sections
+(`*_secrets`), `zelos_inventory_format`, and the derived-fact space: `environment*`,
+`tenancy*`, `tenancies`, `product`, `root_domain`, `public_port*`, `auth_fqdn`, `oidc_*`,
+`bed_*` (retired alias space). Inside `common:`, `gcp` keeps its reserved meaning (the shared
+GCP project dict).
 
 ## Worked examples
 
@@ -147,3 +167,11 @@ gateway.production.zelosai.zelosai.cloud
 # bastion appliance (single-service: drops only the <service> label, per doc 16)
 prod.bastion.zelosai.cloud
 ```
+
+### Registered (v0.4.9): the CI registration list
+
+`cicd_component_repos[]` — the per-environment list of repos foundry builds
+(doc 20): items `{name, url, ref, tier, tenancy, registry_project}`. `name` is
+an opaque project label (never a `zelos.*` FQCN); `tenancy` defaults to `name`.
+Deprecated aliases (alias-first, removed at the v0.4.9 cleanup):
+`argo.events.component_repos`, `workflowtemplates.component_repos`.
