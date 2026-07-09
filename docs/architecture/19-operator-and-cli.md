@@ -7,6 +7,12 @@ to [15-ansible-collection-conventions.md](15-ansible-collection-conventions.md)
 home: [`ZelosAI/zelos.common`](https://github.com/ZelosAI/zelos.common)
 (`zelos-common` python package).
 
+The same per-collection `VERBS` registry projects onto **four surfaces** with no
+per-surface code: the CLI (below), the web console, the OpenAPI contract, and —
+for AI agents — an **MCP server** (`zelos.mcp.plugins` is its optional third
+extension group, mirroring `zelos.cli.plugins` / `zelos.web.plugins`). See
+[21-mcp-surface.md](21-mcp-surface.md) for the MCP surface + its console integration.
+
 ## The shape
 
 ```mermaid

@@ -14,6 +14,14 @@ aggregator endpoint `/mcp`. Each backend is also reachable as a raw passthrough
 at `/<name>/mcp`. There's an always-on built-in MCP at `/zelosmcp/mcp` for
 self-introspection (rule generation, tool catalog, etc.).
 
+One backend worth calling out: the **Zelos operator console** co-serves an MCP
+endpoint at `/api/mcp` — one tool per verb of every installed `zelos.*`
+collection (`proxmox__host_prep`, `foundry__environment`, …). Front it as a
+`streamable-http` backend and an IDE reaches the whole infrastructure toolset
+through the same aggregated `/mcp` URL, with zelosmcp's compression on top. See
+[21-mcp-surface.md](../21-mcp-surface.md) and
+[zelosmcp's configuration docs](https://github.com/ZelosAI/zelosmcp/blob/main/docs/configuration.md).
+
 ## Why it matters for the cost thesis
 
 Three of the suite's biggest subscription-token wins live here:
