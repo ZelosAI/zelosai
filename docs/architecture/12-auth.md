@@ -17,6 +17,14 @@ It pins one concrete provider recipe (Dex) so the v0.5 auth-recipe runbook can
 document a single working path across all deployment strategies, while leaving
 operators free to swap in any standards-compliant OIDC IdP.
 
+> **Scope note.** This doc covers the **zelosai product suite** (gateway / mcp / backplane) EA
+> auth boundary. The **environment platform** — the Ansible collections, the operator console
+> (web / REST / MCP), and the apps deployed into an environment — has its own auth + RBAC model,
+> `common.auth` (inventory format 3): four roles mapped from SSO groups, a downstream group
+> whitelist, and token-based machine clients. That model is
+> [22-auth-and-rbac.md](./22-auth-and-rbac.md); the two share the doc-16 `/oidc` +
+> `/verify-auth` contract but are otherwise independent subsystems.
+
 ## Where auth lives in the suite
 
 ```mermaid
@@ -271,3 +279,6 @@ credentials in exactly one place: the user's IDE.
 - [17-network-access-gate.md](./17-network-access-gate.md) — the network-layer
   gate (source-IP allowlist **OR** mTLS client cert) that sits *in front of*
   this OIDC gate, and the per-bed client CA.
+- [22-auth-and-rbac.md](./22-auth-and-rbac.md) — the environment platform's
+  auth + RBAC model (`common.auth`, four roles, token clients) — a separate
+  subsystem from the gateway boundary this page defines.

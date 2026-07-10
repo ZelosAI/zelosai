@@ -22,5 +22,6 @@
 | Know what zelosserver does | [`architecture/13-zelosserver-scope.md`](./architecture/13-zelosserver-scope.md) |
 | Drive the infrastructure (CLI / console / OpenAPI) | [`architecture/19-operator-and-cli.md`](./architecture/19-operator-and-cli.md) |
 | Let an AI agent drive it (MCP) | [`architecture/21-mcp-surface.md`](./architecture/21-mcp-surface.md) |
+| Configure SSO, roles & machine tokens | [`architecture/22-auth-and-rbac.md`](./architecture/22-auth-and-rbac.md) |
 | Bootstrap a new component repo | [`template/README.md`](./template/README.md) |
 | Add PR-validation CI to a repo | [`template/ci.yml.tmpl`](./template/ci.yml.tmpl) |

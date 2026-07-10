@@ -41,18 +41,19 @@ environment* (the word may survive colloquially; variables and docs use `environ
   later is a data change — live mobility (storage migration, DNS retarget, OIDC re-registration)
   is a future campaign, not v0.4.8.
 - **Auth:** every environment runs a Dex (or Rancher) IdP with a GitHub **or Okta** application —
-  the connector is inventory-driven. OIDC scopes/groups carry access for tenancies, environments,
-  and products.
+  the connector is inventory-driven via `common.auth` (format 3). OIDC scopes/groups carry access
+  for tenancies, environments, and products; the role model and machine token clients are
+  [22-auth-and-rbac.md](22-auth-and-rbac.md).
 - **Word forms:** `environment` alone is an **Ansible-reserved variable name** — the inventory
   dict is therefore `environment_identity:` and derived facts use the full-word forms below. *Tenancy* is the level; a *tenant* is an instance of it.
 
 ## The inventory shape
 
-Set once per environment (in `inventory/<env>/<env>.config.yml`, format 2 — the identity tuple
+Set once per environment (in `inventory/<env>/<env>.config.yml`, format 3 — the identity tuple
 lives in the `common:` collection dict):
 
 ```yaml
-zelos_inventory_format: 2     # the format-2 marker — every orchestration playbook asserts it
+zelos_inventory_format: 3     # the format marker — every orchestration playbook asserts >= 3
 common:
   # NB: `environment` alone is an Ansible-RESERVED name — the tuple is environment_identity.
   environment_identity:
@@ -64,6 +65,7 @@ common:
       kind: k3s                 # k3s | k8s | external
       # …provider-specific binding keys
     tenancies: []               # optional; [{name, namespace, quotas, oidc_group}, …]
+  auth: {}                      # the suite auth + RBAC model (format 3) — see doc 22
 ```
 
 ## Derived facts — `zelos.common.environment_facts`
@@ -79,7 +81,8 @@ playbooks). Roles consume the facts and assert presence in `assert.yml`; they ne
 | `environment_local_domain` | `<name>.<product>.local` | `alpha.foundry.local` |
 | `public_port_suffix` | `:<public_port>` or `''` | `:9443` |
 | `auth_fqdn` | `auth.<environment_domain>` | `auth.alpha.foundry.zelosai.cloud` |
-| `oidc_issuer_url`, `oidc_scopes`, `oidc_groups_claim`, `oidc_admin_group` | per the doc-16 parity layer | — |
+| `oidc_issuer_url`, `oidc_scopes`, `oidc_groups_claim`, `oidc_admin_group` | per the doc-16 parity layer (source: `common.auth`, format 3) | — |
+| `auth_*` model facts (`auth_strategy`/`_preset`/`_idp`, `auth_role_groups`, `auth_admitted_groups`, `auth_connector`, `auth_machine_issuers`, …) | from `common.auth` per [22-auth-and-rbac.md](22-auth-and-rbac.md) | — |
 | `bed_name`, `bed_domain`, `bed_local_domain` | **deprecated aliases** of the above, emitted for one phase | removed in v0.4.8 Phase 6 |
 
 Suite-level assertions carried by `environment_facts`:
@@ -90,6 +93,8 @@ Suite-level assertions carried by `environment_facts`:
   targetPorts only; equality is asserted if a role sets both.
 - `gcp.project` equality across consumers (cert_manager, external_dns, clouddns) when more than
   one sets it explicitly.
+- `zelos_inventory_format >= 3` and `common.auth.roles.admin.groups` non-empty (anti-lockout) —
+  see [22-auth-and-rbac.md](22-auth-and-rbac.md).
 
 ## Variable registry — renames (old → new)
 
@@ -114,6 +119,11 @@ removed in Phase 6. Each rename lands via its v0.4.8 issue.
 | `kubernetes: {version, cluster_endpoint, *_cidr, disable, tls_sans}` (the cluster dict) | `kubernetes.cluster` (bare name collided with the collection root) | zelos.kubernetes |
 | flat secret keys | grouped into `<collection>_secrets:` sections, key NAMES unchanged (distinct roots — same-named top-level keys across inventory sources clobber) | all |
 | (absent) | `zelos_inventory_format: 2` marker, asserted by every orchestration playbook | zelos.common.environment_facts |
+| **format 3 (HARD CUTOVER — the migrator's 2→3 ladder step converts; [doc 22](22-auth-and-rbac.md)):** | | |
+| `common.github_oauth` + `common.oidc` (two dicts) | **merged into one `common.auth`** (strategy/preset/idp, `github:`/`okta:` sub-dicts, `roles:`, `group_whitelist`, `app_roles`, `tokens:`); unknown sub-keys nested verbatim + warned | zelos.common → all consumers |
+| `common.oidc.admin_group` | `common.auth.roles.admin.groups[0]` | zelos.common |
+| `common.oidc.provider` | `common.auth.idp` | zelos.common |
+| `zelos_inventory_format: 2` | `zelos_inventory_format: 3`; `environment_facts` asserts `>= 3` **and** non-empty `auth.roles.admin.groups` | zelos.common.environment_facts |
 
 ## Per-environment secrets key inventory
 
@@ -122,9 +132,11 @@ key in its owning collection's `<collection>_secrets:` section (names unchanged 
 is pure grouping; the authoritative map is `zelos_common.inventory_migrate.SECRETS_MAP` +
 prefix rules):
 
-- **`common_secrets`** (environment-level identity/creds): `github_oauth_client_id/_secret`,
-  `gcp_dns_sa_json`, `gts_eab_key_id`, `gts_eab_hmac`, `gts_eab_minted_at`, Okta client
-  credentials where used.
+- **`common_secrets`** (environment-level identity/creds): `github_oauth_client_id/_secret`
+  **or** `okta_client_id/_secret` (whichever `common.auth.client_*_secret_key` names),
+  `auth_token_signing_key` (HS256 machine-token key, minted by `make seal`), the
+  `auth_client_<name>_id/_secret` family (declared API clients — routed by the `auth_` prefix
+  rule), `gcp_dns_sa_json`, `gts_eab_key_id`, `gts_eab_hmac`, `gts_eab_minted_at`.
 - **`proxmox_secrets`** (infra-minted by the host roles): `proxmox_api_token_id/_secret`, the
   `pve_ceph_*` family, `zelosadmin_password`, `zelosadmin_ssh_private_key`, `idrac_username`,
   `idrac_password`, `idrac_ssh_password`.
@@ -144,12 +156,15 @@ prefix rules):
 
 ## Reserved names
 
-No role's interface dict may shadow the format-2 top-level namespace: the collection roots
+No role's interface dict may shadow the format-2+ top-level namespace: the collection roots
 (`common`, `proxmox`, `kubernetes`, `foundry`, `bastion`), the secrets sections
 (`*_secrets`), `zelos_inventory_format`, and the derived-fact space: `environment*`,
-`tenancy*`, `tenancies`, `product`, `root_domain`, `public_port*`, `auth_fqdn`, `oidc_*`,
-`bed_*` (retired alias space). Inside `common:`, `gcp` keeps its reserved meaning (the shared
-GCP project dict).
+`tenancy*`, `tenancies`, `product`, `root_domain`, `public_port*`, `oidc_*`, **`auth_*`**
+(format 3 widened this from `auth_fqdn` alone — the `auth_strategy`/`auth_role_groups`/… model
+facts of doc 22 live here), `bed_*` (retired alias space). Inside `common:`, `gcp` keeps its
+reserved meaning (the shared GCP project dict) and **`auth` is reserved for the suite auth +
+RBAC model** ([22-auth-and-rbac.md](22-auth-and-rbac.md)) — no collection may bind a role dict
+named `auth` at the collection root.
 
 ## Worked examples
 
