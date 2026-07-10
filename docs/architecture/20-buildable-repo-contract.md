@@ -100,18 +100,43 @@ generic, and `registry.*` is doc-18 reserved):
 cicd_component_repos:
   - name: someapp                    # opaque project name (never a zelos.* FQCN)
     url: https://github.com/SomeOrg/someapp
+    owner: SomeOrg                   # optional; must agree with url
     ref: develop                     # the watched branch
     tier: generic                    # generic | bespoke:<template-name>
     tenancy: someapp                 # doc-18 tenancy facet (defaults to name)
     registry_project: someapp        # Harbor project (defaults to name)
+    # --- OPTIONAL deployment-intent facets (the tenant-registration feature) ---
+    exposure:                        # public routing + oauth bypass for the tenant's services
+      services: [{ name: someapp, service: someapp.zt-someapp.svc.cluster.local, port: 80, auth: bypass }]
+      oauth_bypass: false
+    delivery:                        # the tenant's OWN in-repo Argo CD Application
+      application_path: deploy/argocd/someapp.application.yaml
+      requires_repo_cred: false      # private repo → seal a repo PAT into the argocd Secret
+      image_updater_harbor_read: false
+    secrets: []                      # app-layer secret NAMES (never values)
 ```
 
-The entry carries **identity + tenancy only** — build/test/deliver details live
-exclusively in the repo's `.zelos.yaml` (read at build time; never duplicated
-into inventory). This ONE list drives: the Argo Events EventSource/Sensor
-bindings (push → build), webhook registration (`register_webhooks`), and the
-tenancy provisioning below. Onboarding = manifest in the repo + one
+The entry carries **identity + tenancy + deployment intent** — build/test detail
+still lives exclusively in the repo's `.zelos.yaml` (read at build time; never
+duplicated into inventory). Identity is carried byte-identically to every
+pre-existing consumer; the `exposure`/`delivery`/`secrets` facets are **additive
+and optional** (an environment with none behaves exactly as before). This ONE
+list drives: the Argo Events EventSource/Sensor bindings (push → build), webhook
+registration (`register_webhooks`), the tenancy provisioning below, the
+per-tenant Rancher Project + the tenant's Argo CD delivery, and additive
+public-routing/oauth exposure. Onboarding = manifest in the repo + one
 registration entry + `make seal` for its secrets. Nothing else.
+
+### Write paths + the `FoundryTenant` CRD
+
+A registration is created three interchangeable ways, all ending at the same
+scoped **`register-product`** verb: the operator console's **Tenants** form
+(declared-list CRUD, provision-on-submit), **`zelosctl foundry register-product`**,
+or **`kubectl apply`** of a **`FoundryTenant`** CR (`infra.zelosai.cloud/v1alpha1`,
+whose `.spec` mirrors one entry 1:1). Every registration also persists a
+`FoundryTenant` CR as the record; an opt-in kopf operator reconciles those CRs by
+running the same verb (GitOps + drift). Full mechanics:
+[zelos.foundry docs/architecture/11-tenant-registration.md](https://github.com/ZelosAI/zelos.foundry/blob/develop/docs/architecture/11-tenant-registration.md).
 
 **Migration note (v0.4.9):** the pre-contract names
 `argo.events.component_repos` and `workflowtemplates.component_repos` are live
