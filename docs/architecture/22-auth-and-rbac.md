@@ -19,12 +19,23 @@
 | Wave | Content | Status |
 |---|---|---|
 | **1 — model + rebind** | `common.auth` schema, inventory format 2→3 migration, `environment_facts` derivation, console config form, GitHub **and Okta** presets end-to-end, all sibling collections rebound | **Shipped** (zelos.common ≥ 0.5.0; kubernetes / foundry / bastion rebinds) |
-| **2 — enforcement + tokens** | the `authz.py` seam, verb capability annotations, per-caller MCP scoping, service tokens, API clients + `POST /api/auth/token`, console **Access** CRUD | Contract defined here; implementation in flight |
-| **3 — per-app admission + native RBAC** | dual ext-authz providers, per-app atomic widening, argo-workflows / rancher / harbor / grafana / argocd / bastion role mappings | Contract defined here; not started |
+| **2 — enforcement + tokens** | the `authz.py` seam, verb capability annotations, per-caller MCP scoping, service tokens, API clients + `POST /api/auth/token`, console **Access** CRUD, the gateway machine-JWT path | **Shipped** (zelos.common ≥ 0.6.0; kubernetes / foundry / proxmox / bastion) |
+| **3 — per-app admission + native RBAC** | dual ext-authz providers, per-app atomic widening, argo-workflows / rancher / harbor / grafana / argocd / bastion role mappings | Contract defined here; in progress |
 
 Wave-1 behavior is **byte-identical** to the previous model: `environment_facts` still emits the
 compatibility facts (`github_oauth_resolved_*`, the `oidc_*` parity set of doc 16), so no
-downstream template changed. The new facts and the role model become load-bearing in waves 2–3.
+downstream template changed.
+
+Wave 2 is likewise **safe to land ahead of the inventory**: with no `ZELOS_WEB_ROLE_GROUPS` the
+console falls back to `{"admin": [<admin group>]}` — exactly the pre-RBAC behaviour — and with no
+`bearer_bypass_hosts` the gateway policy renders as it always did. What changes immediately is that
+the *console* now enforces, so an environment that has only declared `roles.admin` keeps working
+and simply has no other roles to grant.
+
+**Until an app re-enforces natively (wave 3), a non-admin role grants nothing beyond the console.**
+The SSO gate still admits only the admin group, so `power_user` / `support` / `observability` are
+console/API/MCP roles today. Widening the gate before wave 3 lands would hand every admitted user
+whatever the app's own default is — which is exactly the escalation wave 3 exists to prevent.
 
 ## The model — `common.auth`
 
@@ -111,15 +122,30 @@ role → capability set at one seam for console, REST API, and MCP alike.
 | `DESTROY_ENV` — env-wide destroy, host wipe, bulk prune | | | | ✓ |
 | `SECURITY` — secrets lifecycle, auth/RBAC config, TLS/CA, token minting | | | | ✓ |
 
-Enforcement rules (wave-2 contract, security invariants below):
+Enforcement rules (security invariants below):
 
-- **Default-deny:** an *unannotated* verb resolves to `SECURITY` (admin-only) — a security
-  boundary never depends on name-substring inference.
+- **Inference only tightens.** A verb's capability comes from its declarations
+  (`security_class`, `destroy_scope`); the name-stem scan that follows can only *raise* the bar,
+  never lower it, and a verb matching nothing resolves to `SECURITY` (admin-only). This is what
+  catches the verb whose name says nothing about what it does — `proxmox host-prep` runs
+  `pveum user token add`, and `bastion sync-users` grants standing gateway access; both are
+  declared `security_class` and are admin-only. Only an explicit `destroy_scope: targeted` opens a
+  destroy to `power_user`.
 - **Confirmation is scoped:** `destroy_scope: environment` verbs require typing the environment
   name (`confirm_destroy`); `destroy_scope: targeted` verbs require typing the *item* id
-  (`confirm_target`). Neither satisfies the other.
+  (`confirm_target`, checked against the verb's declared `target_param`). Neither satisfies the
+  other.
 - **Bootstrap stays admin:** the operator container's filesystem-gated `cert_dir/token` is
   break-glass and remains admin; named machine credentials carry an explicit role.
+- **Environment scope is not a capability.** A credential scoped to `envs: [alpha]` may still list
+  environments and read docs (`env=None` names no environment); it simply sees only `alpha`, and
+  every environment-touching route re-checks. An inventory-backed verb invoked with no environment
+  is refused for a scoped credential.
+
+Today every collection's teardown verb is environment-wide (`foundry destroy`,
+`reconcile-prune`, `proxmox wipe`, …), so `DESTROY_TARGETED` currently grants nothing: no verb
+declares `targeted`. The capability exists so that a future single-node or single-feature teardown
+can be delegated to `power_user` without also handing over the environment.
 
 ## Two enforcement layers — the gate only ADMITS
 
@@ -155,6 +181,15 @@ Two ext-authz extensionProviders are registered — the legacy **admin-only** pr
 **wide** provider (role groups ∪ whitelist) — and each host's require-oauth policy names one.
 An app flips to the wide provider **in the same commit** that lands its native RBAC. The
 console moves first (it enforces at the seam from wave 2).
+
+**Machine clients skip the gate, on named hosts only.** A request carrying its own `Authorization`
+bearer cannot follow the gate's 302 to a login page, so ext-authz is skipped for it — but only for
+the hosts listed in `oauth2_proxy.bearer_bypass_hosts` (the operator console). A blanket bypass
+would let `Authorization: Bearer x` reach *every* gated app, including one whose own auth mode does
+not verify bearers. This is only safe because of security invariant 1 below: the console resolves
+identity from the bearer **alone**, and an invalid bearer is a 401 rather than a fall-through to
+the (now attacker-controlled) `X-Auth-Request-*` headers. The gateway policy and the console's
+bearer-only rule are one change in two repositories; never ship one without the other.
 
 ## The group whitelist
 
@@ -207,24 +242,40 @@ sequenceDiagram
   Z->>V: authorized execute
 ```
 
-- **API clients are declared, not minted:** the entry lives in `<env>.config.yml`; `make seal`
-  (or the console) mints the missing `common_secrets.auth_client_<name>_{id,secret}`. Because
-  the console reads inventory directly, a client is *persistent by construction* — no extra
-  store, and it works in the air-gapped corporate loop.
+- **API clients are declared, not minted:** the entry lives in `<env>.config.yml`; `make seal`,
+  the CLI, or the console mints the missing `common_secrets.auth_client_<name>_{id,secret}`.
+  Because the console reads inventory directly, a client is *persistent by construction* — no
+  extra store, and it works in the air-gapped corporate loop.
 - **`POST /api/auth/token`** is the one unauthenticated POST in the API (it *is* the credential
-  exchange): TLS-only, rate-limited, constant-time compare. Issued tokens are **HS256 JWTs
-  signed with `auth_token_signing_key`** — stdlib-only, so self-issued tokens need zero extra
-  dependencies. Only *external* RS256/JWKS verification needs the optional `[auth]` extra
-  (`PyJWT[crypto]`); absent, that path disables gracefully.
+  exchange): exact-match public path, TLS-only, rate-limited, constant-time compare, and one
+  opaque `invalid_client` for a bad id, a bad secret, or a disabled client. Authentication
+  compares against every enabled client without short-circuiting, so response time does not
+  reveal which client ids exist.
+- **Self-issued tokens need zero dependencies.** They are **HS256 JWTs signed with
+  `auth_token_signing_key`** using only stdlib `hmac`/`hashlib`/`base64`. The `alg` header is
+  *asserted*, never used to select a verifier (`alg: none` and algorithm confusion are rejected),
+  and `exp` is mandatory. Verification accepts a *list* of keys, which is what makes signing-key
+  rotation non-disruptive: sign with the new key, verify against `[new, old]` during the grace
+  window. The request body is parsed with stdlib `urllib.parse` rather than FastAPI's `Form(...)`,
+  which would drag in `python-multipart` — a dependency the air-gapped operator image does not have.
+  Only *external* RS256/JWKS verification needs the optional `[auth]` extra (`PyJWT[crypto]`);
+  absent, that one path disables with a clear error and everything else keeps working.
+- **Revocation is real.** A service token is revoked in its store (the record is retained for the
+  audit trail). An API client is disabled in inventory *and* its outstanding tokens are denylisted
+  by `jti`/client — a rotation that leaves live tokens valid is not a rotation.
 - **Dex registration (D12):** clients marked `dex_register: true` are also injected as Dex
-  clients (via `dex_inject_clients`), enabling standard auth-code / device-code flows against
-  the environment IdP; this moves Dex `storage: memory → kubernetes` so flow state survives
-  restarts. Dex has no client-credentials grant — the console endpoint remains the machine path.
+  clients, enabling standard auth-code / device-code flows against the environment IdP. That
+  requires Dex `storage: memory → kubernetes` (plus a ServiceAccount and RBAC), because in-memory
+  storage drops every refresh token at the next restart. The switch is **not** automatic —
+  it is one-way on a live bed, so the deploy *fails* with an actionable message when a
+  `dex_register` client exists while storage is still `memory`. Dex has no client-credentials
+  grant; the console endpoint remains the machine path.
 - **Lifecycle is full CRUD in the web console** (the corporate vehicle — doc 19): an admin-only
   **Access** section lists/creates/edits/rotates/revokes both API clients and service tokens,
   with a copy-once secret reveal and a "pending apply" badge (a declared client is live for the
   token endpoint immediately; its Dex registration takes effect at the next apply). CLI parity:
-  `zelosctl auth client …` / `zelosctl token …`.
+  `zelosctl auth client list|show|create|update|rotate|delete` and
+  `zelosctl token list|create|update|revoke|delete`.
 - **Opaque GitHub PATs are rejected** — not JWTs, not verifiable air-gapped.
 
 ## Derived facts — `zelos.common.environment_facts`
@@ -274,6 +325,24 @@ re-homes the leaves (`oidc.admin_group` → `roles.admin.groups[0]`, `oidc.provi
 preserves comments/`!vault` values, nests unknown sub-keys verbatim with a warning, and stamps
 `zelos_inventory_format: 3`. Secrets routing gains `auth_token_signing_key` and the
 `auth_client_*` prefix (both → `common_secrets`). A `.bak` is kept; re-running is a no-op.
+
+## Using it
+
+```bash
+# mint a role-scoped, environment-scoped credential for an agent or a CI job
+zelosctl token create claude-agent --role support --env alpha --ttl 24h
+
+# or a persistent, inventory-declared client that survives a fresh `docker run`
+zelosctl auth client create ci-foundry --env alpha --role power_user --ttl 1h
+curl -X POST https://<console>/api/auth/token \
+  -d grant_type=client_credentials -d env=alpha \
+  -d client_id=<id> -d client_secret=<secret>
+```
+
+Both drive `/api/jobs` **and** `/api/mcp` at exactly their declared role and environment scope.
+The console's **Access** section does the same thing for operators who only have the web UI.
+Connecting an agent (Claude Code) to the MCP surface with such a token:
+[zelos.common `docs/operating/mcp-claude-code.md`](https://github.com/ZelosAI/zelos.common/blob/develop/docs/operating/mcp-claude-code.md).
 
 ## See also
 
