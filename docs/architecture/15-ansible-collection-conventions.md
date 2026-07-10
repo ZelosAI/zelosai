@@ -257,7 +257,7 @@ form, imported with `include_tasks` / `import_playbook` as appropriate).
   The only sanctioned `-e` uses are ad-hoc verb flags (`confirm_destroy`, `<role>_destroy_data`,
   `secrets_action`).
 
-## 8. Inventory: per-environment directories (format 2 — per-collection dicts)
+## 8. Inventory: per-environment directories (format 2+ — per-collection dicts)
 
 Each deployment environment is a directory — the **single entry point** for everything:
 
@@ -265,8 +265,8 @@ Each deployment environment is a directory — the **single entry point** for ev
 inventory/
 ├── <env>/                      # one directory per environment (gitignored except sample)
 │   ├── <env>.config.yml        # all environment vars, grouped by OWNING COLLECTION:
-│   │                           #   zelos_inventory_format: 2      (the hard-cutover marker)
-│   │                           #   common:      environment_identity, gcp, github_oauth, oidc,
+│   │                           #   zelos_inventory_format: 3      (the hard-cutover marker)
+│   │                           #   common:      environment_identity, gcp, auth (doc 22),
 │   │                           #                extra_ca, secrets, gts_eab, clouddns
 │   │                           #   proxmox:     api (the PVE conn — renamed from top-level
 │   │                           #                proxmox:), pve_*, network, storage, guest,
@@ -288,11 +288,13 @@ inventory/
   consumes it (`provision_proxmox` is zelos.kubernetes's; `dex_clients` is foundry's); other
   collections cross-read via §5 bindings. Secrets sections use distinct `<collection>_secrets`
   root names because two inventory sources defining the SAME top-level key clobber each other.
-- **Hard cutover:** every orchestration playbook asserts `zelos_inventory_format: 2` (via
-  `zelos.common.environment_facts` preflight). Pre-format-2 inventories are converted in place
+- **Hard cutover:** every orchestration playbook asserts `zelos_inventory_format >= 3` (via
+  `zelos.common.environment_facts` preflight). Older inventories are converted in place
   by `zelosctl inventory migrate --env <env>` (or the console's *Migrate Inventory* verb) —
-  line-based and vault-safe (ciphertext moves verbatim), comment-preserving, idempotent,
-  originals kept as `*.bak`; unmapped keys are left flat and reported.
+  a **version ladder** (flat → 2 → 3; the 2→3 step merges `github_oauth` + `oidc` into
+  `common.auth`, doc 22), line-based and vault-safe (ciphertext moves verbatim),
+  comment-preserving, idempotent, originals kept as `*.bak`; unmapped keys are left flat and
+  reported.
 - **Dynamic inventory is preferred** where the platform supports it: `community.proxmox.proxmox`
   discovers VMs + LXC and groups by tag (LXC nodes get `proxmox_pct_remote`). Static files cover
   what discovery can't. (These files are env-var-driven at parse time and are unaffected by the

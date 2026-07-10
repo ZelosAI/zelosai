@@ -137,7 +137,11 @@ identically everywhere in the suite.
 ### The `oidc_*` parity layer
 
 Dex and Rancher differ in scope handling and group claims; the platform resolves an `oidc_*`
-fact set once from the chosen provider and threads it into every client, hiding the difference:
+fact set once from the chosen provider and threads it into every client, hiding the difference.
+Since inventory **format 3** the source of these facts is the unified **`common.auth`** model
+([22-auth-and-rbac.md](./22-auth-and-rbac.md)): `oidc_admin_group` derives from
+`auth.roles.admin.groups[0]`, the provider choice from `auth.idp`, and the upstream connector
+(GitHub **or Okta**) from the `auth_connector` fact — the fact names below are unchanged:
 
 | Fact | Dex | Rancher |
 |---|---|---|
@@ -147,7 +151,8 @@ fact set once from the chosen provider and threads it into every client, hiding 
 | `oidc_admin_group` | `<org>:<team-slug>` | Rancher principal format (overridable) |
 | `insecure_enable_groups` | n/a | `true` |
 
-See [12-auth.md](./12-auth.md) for the auth model and `zelos.foundry`
+See [22-auth-and-rbac.md](./22-auth-and-rbac.md) for the environment auth + RBAC model,
+[12-auth.md](./12-auth.md) for the zelosai product-suite gateway boundary, and `zelos.foundry`
 [`docs/architecture/23-idp-strategy.md`](https://github.com/ZelosAI/zelos.foundry/blob/develop/docs/architecture/23-idp-strategy.md)
 for the interchangeable-IdP rationale.
 
