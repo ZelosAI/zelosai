@@ -7,6 +7,8 @@
   PR template, gitignore, editorconfig, CODEOWNERS). See
   [`template/README.md`](./template/README.md) for substitution rules.
 
+- [Getting started](getting-started.md) — the ONE path: copy example env → fill → seal → one command.
+
 ## Quick map
 
 | You want to … | Read |
